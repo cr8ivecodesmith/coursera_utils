@@ -1,0 +1,17 @@
+*.py[cod]
+__pycache__
+
+*.mp3
+*_transcription.txt
+out/
+
+db/
+history/
+prompt_cache/
+docs_cache/
+*.pkl
+.env
+
+.python-version
+output/
+input/
