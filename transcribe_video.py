@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from time import sleep
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import json
 import re
@@ -71,7 +71,7 @@ def default_names_cache_path(target_root: Path) -> Path:
     return Path(gettempdir()).joinpath(f"transcribe_video_names_{safe}.json")
 
 
-def load_names_cache(cache_path: Path) -> Dict[str, str]:
+def load_names_cache(cache_path: Path) -> Dict[str, Any]:
     if not cache_path.exists():
         return {}
     try:
@@ -79,23 +79,51 @@ def load_names_cache(cache_path: Path) -> Dict[str, str]:
             data = json.load(fh)
         names = data.get("names", {})
         if isinstance(names, dict):
-            return {str(Path(k)): str(v) for k, v in names.items()}
+            return {str(Path(k)): v for k, v in names.items()}
     except Exception:
         return {}
     return {}
 
 
-def save_names_cache(cache_path: Path, root: Path, names: Dict[Path, str], meta: Optional[Dict] = None) -> None:
+def save_names_cache(cache_path: Path, root: Path, names: Dict[Path, Any], meta: Optional[Dict] = None) -> None:
+    """Save cache; accepts values as either strings (base) or dict entries.
+
+    When value is a string, it's treated as the base smart name. When it's a dict,
+    it may contain keys like {"base": str, "final": str}.
+    """
     payload = {
-        "version": 1,
+        "version": 2,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "root": str(root),
-        "names": {str(Path(k)): v for k, v in names.items()},
+        "names": {},
     }
+    for k, v in names.items():
+        if isinstance(v, dict):
+            payload["names"][str(Path(k))] = v
+        else:
+            payload["names"][str(Path(k))] = {"base": str(v)}
     if meta:
         payload["meta"] = meta
     with cache_path.open("w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+
+def cache_get_base(entry: Any, fallback_stem: str) -> str:
+    if isinstance(entry, dict):
+        val = entry.get("base")
+        if isinstance(val, str) and val.strip():
+            return val
+    if isinstance(entry, str) and entry.strip():
+        return entry
+    return fallback_stem
+
+
+def cache_get_final(entry: Any) -> Optional[str]:
+    if isinstance(entry, dict):
+        val = entry.get("final")
+        if isinstance(val, str) and val.strip():
+            return val
+    return None
 
 
 def _clean_segment(text: str) -> str:
@@ -264,23 +292,74 @@ def sanitize_filename(name: str) -> str:
     return name
 
 
+def _strip_outer_quotes(s: str) -> str:
+    if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
+        return s[1:-1]
+    return s
+
+
+def parse_prefix_parts(parts: Optional[List[str]]) -> List[Tuple[str, str]]:
+    """Parse ordered prefix parts.
+
+    Supports items of the form:
+    - text:VALUE (may include separators/spaces)
+    - counter:N | NN | NNN | NNNN (zero-padded index width 1-4)
+    Note: 'sep:VALUE' is accepted for backward compatibility and treated as text:VALUE.
+    Returns a list of tuples: (kind, value) where kind in {text, sep, counter}.
+    Unknown items are treated as text:VALUE (back-compat).
+    """
+    if not parts:
+        return []
+    out: List[Tuple[str, str]] = []
+    for raw in parts:
+        if not isinstance(raw, str):
+            continue
+        s = raw.strip()
+        if ":" in s:
+            kind, val = s.split(":", 1)
+            kind = kind.strip().lower()
+            val = _strip_outer_quotes(val.strip())
+            if kind in {"text", "sep"}:
+                # Treat 'sep' as an alias of 'text' for simplicity
+                out.append(("text", val))
+                continue
+            if kind == "counter":
+                n = val.strip()
+                if re.fullmatch(r"N{1,4}", n):
+                    out.append(("counter", n))
+                    continue
+        # fallback -> treat whole string as text
+        out.append(("text", _strip_outer_quotes(s)))
+    return out
+
+
+def build_prefix_string(parsed_parts: List[Tuple[str, str]], index: int) -> str:
+    """Build the prefix string for a given 1-based index."""
+    buf: List[str] = []
+    for kind, val in parsed_parts:
+        if kind == "text":
+            buf.append(val)
+        elif kind == "counter":
+            width = len(val)
+            buf.append(str(index).zfill(width))
+    return "".join(buf)
+
+
 def make_output_filename(
     video_path: Path,
     index: int,
-    prefix: Optional[str] | None,
+    parsed_prefix: Optional[List[Tuple[str, str]]] = None,
     smart_base: Optional[str] = None,
 ) -> str:
     """Return output filename per spec.
 
-    - Default: `<video_filename_stem>_transcript.txt`
-    - With prefix: `<prefix>_NN_transcript.txt` (1-based, 2 digits)
-    - With smart_base: `<smart_base>_transcript.txt` (overrides prefix)
+    - Default: `<video_filename_stem>.txt`
+    - With smart_base: `<smart_base>.txt`
+    - With parsed_prefix: `<prefix_parts><base>.txt` (prefix is combinable)
     """
-    if smart_base:
-        return f"{sanitize_filename(smart_base)}_transcript.txt"
-    if prefix:
-        return f"{prefix}_{index:02d}_transcript.txt"
-    return f"{video_path.stem}_transcript.txt"
+    base = sanitize_filename(smart_base) if smart_base else video_path.stem
+    prefix_str = build_prefix_string(parsed_prefix or [], index)
+    return f"{prefix_str}{base}.txt"
 
 
 def main():
@@ -289,12 +368,24 @@ def main():
     parser = argparse.ArgumentParser(description="Transcribe mp4 video(s) using Whisper-1")
     parser.add_argument("TARGET", help="Path to an .mp4 file or a directory containing .mp4 files")
     parser.add_argument("-o", "--output-dir", dest="output_dir", help="Directory to write transcripts (default: cwd)")
-    parser.add_argument("-p", "--prefix", dest="prefix", help="Prefix for output files; auto-numbered as <prefix>_NN_transcript.txt")
+    parser.add_argument(
+        "-p",
+        "--prefix",
+        dest="prefix",
+        action="append",
+        help=(
+            "Composable prefix parts (repeatable). Format: "
+            "text:VALUE | counter:N|NN|NNN|NNNN. "
+            "Order is preserved. Example: -p 'text:This is a text' -p 'text:-' -p 'counter:NN' -p 'text: ' "
+            "(Note: legacy sep:VALUE is accepted and treated as text:VALUE)."
+        ),
+    )
     parser.add_argument("-l", "--list", dest="list_only", action="store_true", help="List discovered .mp4 files and exit")
     parser.add_argument("-r", "--recursive", dest="recursive", action="store_true", help="Traverse subfolders of the target directory")
     parser.add_argument("--smart-names", dest="smart_names", action="store_true", help="Generate smart output names from directory structure")
     parser.add_argument("--use-ai", dest="use_ai", action="store_true", help="Use OpenAI to refine smart names (optional)")
     parser.add_argument("--names-file", dest="names_file", help="Path to cache file for proposed names (defaults to a hidden file in target root)")
+    parser.add_argument("--refresh-names", dest="refresh_names", action="store_true", help="Regenerate names for discovered files (overwrites cache entries)")
 
     args = parser.parse_args()
 
@@ -310,21 +401,56 @@ def main():
             print("No .mp4 files found.")
             return
         if args.smart_names:
-            # Build and save proposed names
+            # Build and save proposed names, merging with any existing cache unless refresh requested
             client = load_client() if args.use_ai else None
             root = target_path if target_path.is_dir() else target_path.parent
-            mapping = build_name_mapping(video_files, root, args.use_ai, client)
-            cache_path = Path(args.names_file).expanduser().resolve() if args.names_file else default_names_cache_path(root)
-            save_names_cache(cache_path, root, mapping, meta={"use_ai": args.use_ai})
+            cache_path = (
+                Path(args.names_file).expanduser().resolve()
+                if args.names_file
+                else default_names_cache_path(root)
+            )
+            existing_raw = load_names_cache(cache_path)
+            existing: Dict[Path, Any] = {Path(k): v for k, v in existing_raw.items()}
+            if args.refresh_names:
+                mapping_base = build_name_mapping(video_files, root, args.use_ai, client)
+            else:
+                missing = [p for p in video_files if p not in existing]
+                mapping_base = {}
+                if missing:
+                    generated = build_name_mapping(missing, root, args.use_ai, client)
+                    mapping_base.update(generated)
+            # Build final names including prefix for preview and save them
+            parsed_prefix = parse_prefix_parts(args.prefix)
+            combined: Dict[Path, Any] = {}
+            # Start from existing to preserve edits
+            combined.update(existing)
+            for i, p in enumerate(video_files, start=1):
+                base = mapping_base.get(p)
+                if base is None:
+                    base = cache_get_base(existing.get(p), p.stem) if p in existing else heuristic_smart_name(p, root)
+                final = make_output_filename(p, i, parsed_prefix, smart_base=base)
+                combined[p] = {"base": base, "final": final}
+            save_names_cache(
+                cache_path,
+                root,
+                combined,
+                meta={"use_ai": args.use_ai, "refreshed": args.refresh_names, "prefix_parts": args.prefix or []},
+            )
             print("Proposed names (saved). Edit the cache file to adjust:")
             print(f"Cache file: {cache_path}")
             for p in video_files:
-                base = mapping.get(p, p.stem)
-                out_name = make_output_filename(p, 0, None, smart_base=base)
-                print(f"{p} -> {out_name}")
+                entry = combined.get(p)
+                final = cache_get_final(entry)
+                if not final:
+                    base = cache_get_base(entry, p.stem)
+                    final = make_output_filename(p, video_files.index(p) + 1, parsed_prefix, smart_base=base)
+                print(f"{p} -> {final}")
         else:
-            for p in video_files:
-                print(str(p))
+            # No smart names: still allow prefix preview
+            parsed_prefix = parse_prefix_parts(args.prefix)
+            for i, p in enumerate(video_files, start=1):
+                out_name = make_output_filename(p, i, parsed_prefix, smart_base=None)
+                print(f"{p} -> {out_name}")
         return
 
     if not video_files:
@@ -336,21 +462,29 @@ def main():
 
     client = load_client()
 
+    parsed_prefix = parse_prefix_parts(args.prefix)
     # If using smart names, try to load from cache (user may have edited)
-    smart_mapping: Dict[Path, str] = {}
+    names_entries: Dict[Path, Any] = {}
     if args.smart_names:
         root = target_path if target_path.is_dir() else target_path.parent
         cache_path = Path(args.names_file).expanduser().resolve() if args.names_file else default_names_cache_path(root)
         raw = load_names_cache(cache_path)
-        # Convert to Path keys
-        smart_mapping = {Path(k): v for k, v in raw.items()}
-        # If mapping incomplete, fill missing using heuristic (avoid AI to keep fast unless explicitly requested)
-        missing = [p for p in video_files if p not in smart_mapping]
+        entries = {Path(k): v for k, v in raw.items()}
+        # Ensure we have entries for all files
+        missing = [p for p in video_files if p not in entries]
         if missing:
-            fill = build_name_mapping(missing, root, args.use_ai, client if args.use_ai else None)
-            smart_mapping.update(fill)
-            save_names_cache(cache_path, root, smart_mapping, meta={"use_ai": args.use_ai, "note": "auto-filled missing entries"})
-
+            base_fill = build_name_mapping(missing, root, args.use_ai, client if args.use_ai else None)
+            for p, b in base_fill.items():
+                entries[p] = {"base": b}
+        # Compute/refresh finals for current run order using provided prefix
+        for i, p in enumerate(video_files, start=1):
+            entry = entries.get(p, {})
+            base = cache_get_base(entry, p.stem)
+            final = make_output_filename(p, i, parsed_prefix, smart_base=base)
+            entries[p] = {"base": base, "final": final}
+        # Persist back before writing output
+        save_names_cache(cache_path, root, entries, meta={"use_ai": args.use_ai, "note": "refreshed finals before transcription", "prefix_parts": args.prefix or []})
+        names_entries = entries
     for idx, video in enumerate(video_files, start=1):
         print(f"Processing: {video.name}")
         try:
@@ -359,8 +493,11 @@ def main():
             print(f"Failed to transcribe {video.name}: {exc}")
             continue
 
-        smart_base = smart_mapping.get(video) if args.smart_names else None
-        out_name = make_output_filename(video, idx, args.prefix, smart_base=smart_base)
+        if args.smart_names:
+            entry = names_entries.get(video, {})
+            out_name = cache_get_final(entry) or make_output_filename(video, idx, parsed_prefix, smart_base=cache_get_base(entry, video.stem))
+        else:
+            out_name = make_output_filename(video, idx, parsed_prefix, smart_base=None)
         out_path = out_dir.joinpath(out_name)
         print(f"Saving transcript to: {out_path}")
         with out_path.open("w", encoding="utf-8") as fh:
