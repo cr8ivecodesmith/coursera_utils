@@ -1,0 +1,8 @@
+openai
+pydub
+speechrecognition
+yt-dlp[default]
+dl-coursera
+
+# Utils
+python-dotenv
