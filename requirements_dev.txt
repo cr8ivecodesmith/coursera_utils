@@ -5,5 +5,4 @@ coverage
 pytest-xdist
 pytest-cov
 ruff
-ruff
 black
