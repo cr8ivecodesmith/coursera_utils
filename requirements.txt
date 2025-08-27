@@ -6,3 +6,9 @@ dl-coursera
 
 # Utils
 python-dotenv
+
+# Markdown → PDF
+markdown-it-py>=3.0.0
+Jinja2>=3.1
+Pygments>=2.15
+weasyprint>=60.0
