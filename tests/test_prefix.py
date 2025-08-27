@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import transcribe_video as tv
+import app.transcribe_video as tv
 
 
 def test_parse_prefix_and_build_counter_widths():
@@ -26,4 +26,3 @@ def test_make_output_filename_with_smart_base_and_prefix():
     out = tv.make_output_filename(Path('x.mp4'), 12, parts, smart_base='Intro to ML')
     # zero-padded 2 digits for NN => 12 -> 12
     assert out == 'This-12-Intro to ML.txt'
-

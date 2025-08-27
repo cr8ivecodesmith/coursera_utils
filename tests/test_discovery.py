@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import transcribe_video as tv
+import app.transcribe_video as tv
 
 
 def test_find_video_files_top_level_vs_recursive(tmp_path):
@@ -22,4 +22,3 @@ def test_find_video_files_top_level_vs_recursive(tmp_path):
 
     rec = tv.find_video_files(tmp_path, recursive=True)
     assert a in rec and c in rec
-

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-import transcribe_video as tv
+import app.transcribe_video as tv
 
 
 def run_main_with_args(args):
@@ -50,4 +50,3 @@ def test_list_smart_names_saves_final_names(tmp_path, capsys):
     e2 = data['names'][str(v2)]
     assert e1['final'].startswith('PRE-01-')
     assert e2['final'].startswith('PRE-02-')
-

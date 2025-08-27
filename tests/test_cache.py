@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 
-import transcribe_video as tv
+import app.transcribe_video as tv
 
 
 def test_save_and_load_cache_v2_roundtrip(tmp_path):
@@ -43,4 +43,3 @@ def test_upgrade_from_v1_and_save(tmp_path):
     data = json.loads(cache.read_text())
     assert data["version"] == 2
     assert data["names"][str(video)]["base"] == "Old Base Name"
-

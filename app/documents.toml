@@ -1,0 +1,46 @@
+[keywords]
+model = "gpt-4o-mini"
+description = "Extract keywords/topics from reference files with brief descriptions, grouped by file."
+prompt = """
+Produce a concise keyword index from the reference files.
+
+Requirements:
+- Group output by file, using a Markdown heading per file (## <Filename>).
+- Under each file, list bullet points of important keywords/terms/topics.
+- For each keyword, add a short description based strictly on how the term is used or defined in the text.
+- Prefer the text's phrasing and definitions; do not invent details.
+- Keep each description to one sentence when possible.
+- Avoid duplication across a file's list; merge closely related terms.
+"""
+
+[reading_assignment]
+model = "gpt-4o-mini"
+description = "Create a study reading assignment with summaries, key ideas, questions, and illustrative stories."
+prompt = """
+Create a study-ready reading assignment in Markdown from the reference files.
+
+Structure and requirements:
+- Use a top-level heading for the assignment title (e.g., # Reading Assignment).
+- For each file, create a section with a Markdown heading (## <Filename>).
+- Inside each section, include:
+  - Summary: A short paragraph paraphrasing the file's content.
+  - Key Ideas: 3–7 bullet points of core concepts.
+  - Questions: 3–7 thoughtful questions that test understanding.
+  - Stories/Examples: 1–3 brief, concrete examples or scenarios that illuminate the concepts.
+- Prefer paraphrasing directly from the files; avoid speculation.
+"""
+
+[book]
+model = "gpt-4o-mini"
+description = "Compose a cohesive book from the reference files; each file becomes a chapter."
+prompt = """
+Compose a short book in Markdown from the reference files.
+
+Guidance:
+- Treat each file as a chapter, preserving input order.
+- Reorganize content into coherent sentences, paragraphs, and topics.
+- Choose either an instructional or narrative voice based on the overall context; stay consistent.
+- Be faithful to the text; avoid introducing facts not present in the references.
+- Add brief transitions between chapters if helpful for coherence.
+"""
+

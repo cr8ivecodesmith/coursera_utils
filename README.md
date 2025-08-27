@@ -37,3 +37,11 @@ Each step will have substeps helped by the scripts in this repository.
 
 ## Repeat step 1 for the next module
 
+## Utilities
+
+- `python -m app.text_combiner OUTPUT INPUTS... [options]`
+  - Combine text files with optional section titles and ordering. See `--help`.
+- `python -m app.generate_document DOC_TYPE OUTPUT INPUTS... [options]`
+  - Generate a Markdown document from reference files using prompts defined in a TOML config.
+  - Looks for `documents.toml` in the current directory, then falls back to the bundled defaults under `app/documents.toml`.
+  - Example: `python -m app.generate_document reading_assignment notes.md ./materials --extensions txt md --level-limit 0`
