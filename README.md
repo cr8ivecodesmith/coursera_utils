@@ -28,15 +28,19 @@ To enable Markdown → PDF generation with WeasyPrint, install its system librar
   - `sudo apt-get install -y libcairo2 libpango-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libxml2 libxslt1.1 shared-mime-info`
   - Recommended fonts: `sudo apt-get install -y fonts-dejavu fonts-liberation`
 
+To enable video transcription, ensure ffmpeg is installed (pydub uses it under the hood):
+
+- `sudo apt-get install -y ffmpeg`
+
 Notes:
-- The generator uses WeasyPrint only; Pandoc/LaTeX is not required.
-- The AI-powered title page requires an `OPENAI_API_KEY` (supports `.env`).
+- The PDF generator uses WeasyPrint only; Pandoc/LaTeX is not required.
+- Transcription and document generation that leverage AI require `OPENAI_API_KEY` (supports `.env`).
 
 ## Gather materials for a module
 
 - Download all materials for a module.
 - At the very least the transcript file for the video.
-- If there's no transcript file available, use the `transcribe_video.py` script.
+- If there's no transcript file available, use `python -m app.transcribe_video`.
 
 ## Pre-study
 
@@ -58,6 +62,13 @@ Notes:
   - Generate a Markdown document from reference files using prompts defined in a TOML config.
   - Looks for `documents.toml` in the current directory, then falls back to the bundled defaults under `app/documents.toml`.
   - Example: `python -m app.generate_document reading_assignment notes.md ./materials --extensions txt md --level-limit 0`
+- `python -m app.transcribe_video TARGET [options]`
+  - Transcribe one `.mp4` file or a directory of `.mp4` files using Whisper-1.
+  - Supports optional recursion, list/preview mode, smart names with optional AI refinement, and composable filename prefixes.
+  - Examples:
+    - Preview names and save editable cache: `python -m app.transcribe_video ./videos --list --smart-names --use-ai`
+    - Transcribe a directory recursively with smart names and counter prefix: `python -m app.transcribe_video ./videos -r --smart-names -p 'text:Lecture ' -p 'counter:NN'`
+    - Transcribe a single file to a custom folder: `python -m app.transcribe_video ./videos/intro.mp4 -o ./transcripts`
 - `python -m app.markdown_to_pdf OUTPUT.pdf INPUTS... [options]`
   - Convert Markdown to a single PDF using WeasyPrint, with configurable paper size, margins, optional title page, and optional table of contents.
   - Examples:

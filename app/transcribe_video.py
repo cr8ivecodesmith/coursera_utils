@@ -1,3 +1,20 @@
+"""Transcribe mp4 video(s) to plain text using Whisper-1.
+
+Features:
+- Discover `.mp4` files from a file or directory, with optional recursion.
+- Optional list mode to preview discovered files and proposed output names.
+- "Smart" output names derived from directory structure; optional AI-refined titles.
+- Names cache file (`.transcribe_video_names.json`) that you can edit and reuse.
+- Composable filename prefixes (text and zero-padded counters).
+- Splits audio into ~10-minute mp3 chunks with pydub/ffmpeg, transcribes, and concatenates.
+- Environment-driven OpenAI client setup via `load_client()` with `.env` support.
+
+Design notes:
+- Argparse CLI with small, pure helpers for discovery, naming, and parsing.
+- I/O and API calls are isolated in `main()` and `transcribe_*` helpers.
+- Avoids global state; cache file path is explicit/deterministic.
+"""
+
 import os
 from pathlib import Path
 from shutil import rmtree
@@ -34,8 +51,8 @@ def find_video_files(target: Path, recursive: bool = False) -> List[Path]:
     """Return a flat list of `.mp4` files for the given target.
 
     - If `target` is a file, validates extension and returns [target].
-    - If `target` is a directory, returns only top-level `.mp4` files.
-    - Subfolders are NOT traversed.
+    - If `target` is a directory and `recursive` is False, returns only top-level `.mp4` files.
+    - If `target` is a directory and `recursive` is True, traverses subfolders.
     """
     if target.is_file():
         if target.suffix.lower() != ".mp4":
