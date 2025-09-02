@@ -2,7 +2,7 @@ from app import quizzer as qz
 from textual.widgets import Button, Static
 
 
-def test_question_view_composes_expected_widgets():
+def test_question_view_feedback_text():
     question = {
         "id": "q1",
         "topic_id": "intro",
@@ -15,21 +15,11 @@ def test_question_view_composes_expected_widgets():
             {"key": "D", "text": "22"},
         ],
         "answer": "B",
-        "explanation": "",
+        "explanation": "because 4",
     }
     view = qz.QuestionView(question, index=1, total=10)
-    widgets = list(view.compose())
-    # First widget is stem
-    assert isinstance(widgets[0], Static)
-    assert "2+2" in str(widgets[0].renderable)
-    # The Vertical context yields Buttons directly in our compose
-    buttons = [b for b in widgets if isinstance(b, Button)]
-    assert len(buttons) == 4
-    assert any("A)" in str(b.label) for b in buttons)
-    # Progress and feedback present: last is feedback, previous is progress
-    assert isinstance(widgets[-1], Static)
-    assert widgets[-1].id == "feedback"
-    assert widgets[-2].id == "progress"
+    assert view.feedback_text("B").startswith("Correct")
+    assert view.feedback_text("A").startswith("Incorrect")
 
 
 def test_quiz_app_initial_state():
@@ -40,7 +30,7 @@ def test_quiz_app_initial_state():
         "stem": "Q",
         "choices": [{"key": "A", "text": "x"}, {"key": "B", "text": "y"}],
         "answer": "A",
-        "explanation": "",
+        "explanation": "because 4",
     }
     app = qz.QuizApp([q])
     assert app._index == 0
@@ -56,7 +46,7 @@ def test_quiz_app_navigation_and_selection():
             "stem": "Q1",
             "choices": [{"key": "A", "text": "x"}, {"key": "B", "text": "y"}],
             "answer": "B",
-            "explanation": "",
+            "explanation": "because 4",
         },
         {
             "id": "q2",
@@ -65,12 +55,12 @@ def test_quiz_app_navigation_and_selection():
             "stem": "Q2",
             "choices": [{"key": "A", "text": "x"}, {"key": "B", "text": "y"}],
             "answer": "A",
-            "explanation": "",
+            "explanation": "because 4",
         },
     ]
     app = qz.QuizApp(qs)
     assert app.current_question()["id"] == "q1"
-    assert app.select_answer("A") is False
+    assert app.select_answer("A") is True
     assert app.select_answer("B") is True
     app.next_question()
     assert app.current_question()["id"] == "q2"

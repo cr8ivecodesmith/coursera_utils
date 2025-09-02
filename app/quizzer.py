@@ -35,7 +35,7 @@ except Exception:  # pragma: no cover - fallback
 from textual.app import App, ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static, Button
-from textual.containers import Vertical
+from textual.containers import Vertical, Container
 
 # -----------------------------
 # Discovery
@@ -922,13 +922,14 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
 
 
 class QuestionView(Widget):
-    """A simple view that renders a single MCQ with choices and progress."""
+    """A simple view that renders a single MCQ with choices, progress and status."""
 
-    def __init__(self, question: Dict[str, object], index: int, total: int) -> None:
+    def __init__(self, question: Dict[str, object], index: int, total: int, *, selected: Optional[str] = None) -> None:
         super().__init__()
         self.question = question
         self.index = index
         self.total = total
+        self.selected = (selected or "").strip().upper() or None
 
     def compose(self) -> ComposeResult:
         stem = str(self.question.get("stem", "")).strip()
@@ -946,7 +947,8 @@ class QuestionView(Widget):
                 yield Button(label, id=f"choice-{key}")
         prog = f"{self.index}/{self.total}"
         yield Static(prog, id="progress")
-        yield Static("", id="feedback")
+        status = f"Selected: {self.selected}" if self.selected else ""
+        yield Static(status, id="feedback")
 
     def compute_correct(self, key: str) -> tuple[bool, str]:
         """Evaluate a choice key against the question's answer.
@@ -964,18 +966,24 @@ class QuestionView(Widget):
 
 class QuizApp(App):
     CSS_PATH = None
+    BINDINGS = [("n","next","Next"),("p","prev","Prev"),("a","select_a","Select A"),("b","select_b","Select B"),("c","select_c","Select C"),("d","select_d","Select D")]
 
     def __init__(self, questions: Sequence[Dict[str, object]]):
         super().__init__()
         self._questions = list(questions)
         self._index = 0
+        self._selected: Dict[str, str] = {}
 
     def compose(self) -> ComposeResult:
         if not self._questions:
             yield Static("No questions.", id="empty")
             return
-        q = self._questions[self._index]
-        yield QuestionView(q, index=self._index + 1, total=len(self._questions))
+        with Container(id="stage"):
+            q = self._questions[self._index]
+            qid = str(q.get("id", self._index))
+            sel = self._selected.get(qid)
+            yield QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel)
+        yield Static("[n] Next  [p] Prev  [A-D] Select", id="nav")
 
     # Pure helpers for navigation and selection (testable without running App)
     def current_question(self) -> Dict[str, object]:
@@ -984,16 +992,55 @@ class QuizApp(App):
     def next_question(self) -> int:
         if self._index + 1 < len(self._questions):
             self._index += 1
+        self._update_stage()
         return self._index
 
     def prev_question(self) -> int:
         if self._index > 0:
             self._index -= 1
+        self._update_stage()
         return self._index
 
     def select_answer(self, key: str) -> bool:
         q = self.current_question()
-        return str(key).strip().upper() == str(q.get("answer", "")).strip().upper()
+        k = str(key).strip().upper()[:1]
+        if not k:
+            return False
+        qid = str(q.get("id", self._index))
+        self._selected[qid] = k
+        self._update_stage()
+        return True
+
+    def _update_stage(self) -> None:
+        if not self._questions:
+            return
+        try:
+            stage = self.query_one("#stage", Container)
+        except Exception:
+            return
+        stage.remove_children()
+        q = self._questions[self._index]
+        qid = str(q.get("id", self._index))
+        sel = self._selected.get(qid)
+        stage.mount(QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel))
+
+    def action_next(self) -> None:
+        self.next_question()
+
+    def action_prev(self) -> None:
+        self.prev_question()
+
+    def action_select_a(self) -> None:
+        self.select_answer("A")
+
+    def action_select_b(self) -> None:
+        self.select_answer("B")
+
+    def action_select_c(self) -> None:
+        self.select_answer("C")
+
+    def action_select_d(self) -> None:
+        self.select_answer("D")
 
 
 def _cmd_start(args: argparse.Namespace) -> int:
@@ -1056,4 +1103,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-
