@@ -60,7 +60,9 @@ def test_quiz_app_navigation_and_selection():
     ]
     app = qz.QuizApp(qs)
     assert app.current_question()["id"] == "q1"
+    assert app.answered_count() == 0
     assert app.select_answer("A") is True
+    assert app.answered_count() == 1
     app.action_select_b()
     qid = app.current_question()["id"]
     assert app._selected.get(qid) == "B"

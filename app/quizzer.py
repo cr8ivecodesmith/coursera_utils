@@ -993,8 +993,12 @@ class QuizApp(App):
             qid = str(q.get("id", self._index))
             sel = self._selected.get(qid)
             yield QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel)
-        yield Static("[n] Next  [p] Prev  [A-D] Select  [Enter] Submit", id="nav")
-        yield Button("Submit", id="submit")
+        with Container(id="footer"):
+            yield Button("Prev", id="prev")
+            yield Button("Next", id="next")
+            yield Button("Submit", id="submit")
+            yield Static(self._answered_text(), id="answered")
+            yield Static("", id="confirm")
 
     # Pure helpers for navigation and selection (testable without running App)
     def current_question(self) -> Dict[str, object]:
@@ -1022,6 +1026,12 @@ class QuizApp(App):
         self._update_stage()
         return True
 
+    def _answered_text(self) -> str:
+        return f"Answered: {len(self._selected)}/{len(self._questions)}"
+
+    def answered_count(self) -> int:
+        return len(self._selected)
+
     def _update_stage(self) -> None:
         if not self._questions:
             return
@@ -1034,6 +1044,11 @@ class QuizApp(App):
         qid = str(q.get("id", self._index))
         sel = self._selected.get(qid)
         stage.mount(QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel))
+        try:
+            ans = self.query_one("#answered", Static)
+            ans.update(self._answered_text())
+        except Exception:
+            pass
 
     def action_next(self) -> None:
         self.next_question()
@@ -1059,6 +1074,10 @@ class QuizApp(App):
             self.select_answer(bid[-1])
         elif bid == "submit":
             self.action_submit()
+        elif bid == "next":
+            self.action_next()
+        elif bid == "prev":
+            self.action_prev()
 
     def action_submit(self) -> None:
         # No-op for now; will evaluate/save later
