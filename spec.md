@@ -218,83 +218,113 @@ Convert one or more Markdown files into a single PDF with configurable paper siz
 
 ### **Description**
 
-An interactive script that will quiz based on given source files.
+Interactive terminal quiz tool that extracts topics and multiple‑choice questions from Markdown sources, stores a local bank, runs practice sessions, and summarizes weak areas for review. AI is optional and configurable; artifacts are human‑editable.
 
-### **Inputs**
+### **Python Compatibility**
 
-**Required:**
+- Target: Python 3.8+.
+- Optional UI: `textual` for a richer TUI; pure CLI fallback when not installed.
 
-- Quiz name taken from the a section provided in the config file.
+### **CLI**
 
-**Optional:**
+- Base: `python -m app.quizzer [command] [options]`
+- Global options:
+  - `--config PATH`: Path to `quizzer.toml` (default: look in CWD, then `app/`).
+  - `--out DIR`: Artifacts directory (default: `.quizzer/<quiz_name>` under CWD).
+  - `--model NAME`: Override AI model for this run.
+  - `--seed INT`: Global RNG seed for deterministic selection.
+  - `--dry-run`: Print plan without writing files or calling AI.
+  - `--verbose`: Print detailed steps.
+- Commands:
+  - `init QUIZ_NAME`: Create `quizzer.toml` template for a quiz.
+  - `topics generate QUIZ_NAME [--force] [--limit N] [--extensions md markdown] [--level-limit N]`: Extract and persist topics.
+  - `topics list QUIZ_NAME [--filter STR]`: List known topics.
+  - `questions generate QUIZ_NAME [--per-topic N] [--type mcq] [--regenerate-missing]`: Generate and validate questions with answers.
+  - `questions list QUIZ_NAME [--topics TOPIC... ]`: List questions in bank.
+  - `start QUIZ_NAME [--num N] [--mix balanced|random|weakness] [--topic TOPIC ...] [--resume] [--shuffle] [--explain|--no-explain] [--time-limit SEC]`: Run a quiz session.
+  - `review QUIZ_NAME [--session ID]`: Re‑quiz wrong/weak topics from a prior session.
+  - `report QUIZ_NAME [--session ID]`: Show session summary and per‑topic stats.
 
-- Generate topics -- Generates topic file from the quiz source files
-- List topics -- Lists identified topics
-- Generate questions -- Generates questions and answer keys file based on configuration.
-- Questions per topic -- Number of questions to generate per topic. Default 3.
-- Create quizzer template -- Generates a quizzer.toml template file that the user
-  can edit.
+### **Configuration: `quizzer.toml`**
 
+- Layout: multiple quiz definitions under `[quiz.<name>]`.
+- Required fields under each quiz:
+  - `sources = ["./path", ...]`: Files or directories (recursively discover `*.md`, `*.markdown`).
+  - `types = ["mcq"]`: Supported question types; start with `mcq`.
+- Recommended fields:
+  - `materials = ["./refs/reading.txt", ...]`: Optional reference texts for explanations.
+  - `per_topic = 3`: Default questions to generate per topic.
+  - `ensure_coverage = true`: Ask each topic at least once before repeats.
+  - `focus_topics = ["Topic A", ...]`: Limit generation/selection to these topics.
+  - `topic_seed = 0` and `question_seed = 0`: Deterministic AI generation when set.
+  - `user_background = "..."`: Used for analogies in explanations.
+  - `[ai] model = "gpt-4o-mini"; temperature = 0.2; max_tokens = 600; system_prompt = "..."`.
+  - `[storage] out_dir = ".quizzer/<name>"`: Override artifacts directory.
 
-**quizzer.toml**
+### **Artifacts & Schemas**
 
-Contains configuration for different kinds of quiz separated by sections. This
-configuration will not be provided by default and must be provided by the user.
-
-The ff. configurations will be needed:
-- Quiz source files: One or more input Markdown files or directories (recursively discovering `*.md` by default). This will be used for the questions.
-- Material references: Optional, file path. These can be raw transcript of video or audio lessons, books, articles, etc. When available, these can be used when the student wants to discuss a topic to further their understanding. Otherwise, the AI tutor will attempt to search for materials online preferring high value sources such as wikipedia. For now we'll only support text readable files.
-- Quiz types: Must support multiple choice for now.
-- Number of questions: Number of questions per quiz type.
-- Ensure complete coverage: Optional, boolean, defaults true. Ideally, at least all topics
-  can be asked at least once. If this setting is false, then in the event of 
-  (questions < topics) we just accept that. If this setting is true, we ensure that at least
-  all topics are asked once regardless of the number of questions setting.
-- Focus topics: Optional, list. Topics are first identified from the source files and stored
-  in a file. This will be used by the AI tutor to ensure coverage. When this is set,
-  It only quizzes on the given topics.
-- Topic seed: Optional, int.
-- Question seed: Optional, int.
-- User background: Optional, long string. Can be used by the AI tutor for metaphors and
-  analogies when explaining concepts to the user.
-
+- Topics: `topics.jsonl` (one per line)
+  - `{ "id": "slug", "name": "Topic", "description": "...", "source_paths": ["..."], "created_at": "ISO8601" }`
+- Questions: `questions.jsonl` (one per line)
+  - `{ "id": "uuid", "topic_id": "slug", "type": "mcq", "stem": "...", "choices": [{"key":"A","text":"..."},...], "answer": "B", "explanation": "...", "sources": ["file.md#h3"], "version": 1, "created_at": "ISO8601" }`
+- Sessions: `sessions/<timestamp>/`
+  - `responses.jsonl`: `{ "question_id": "...", "given": "A", "correct": true, "duration_sec": 7.2, "topic_id": "..." }`
+  - `summary.json`: `{ "id": "...", "started_at": "...", "ended_at": "...", "total": 20, "correct": 16, "accuracy": 0.8, "per_topic": {"slug": {"asked": 3, "correct": 2}}, "weak_topics": ["slug"], "mix": "balanced" }`
 
 ### **Behavior**
 
-- When generating topics, ensure the topic has not yet been identified. Likewise,
-  note that there can be more than one topic file.
-- When generating questions, ensure all topics are covered. Note that there can
-  be more than one question file.
-- When selecting questions and topics, randomly select them but ensure a balanced
-  distribution or prioritize topics that have not been
-  covered. Note if a random seed is set. Ultimately, the AI tutor must also
-  take into account the user's weak areas (refers to previous summary reports
-  if available) and prefer those during the question prep process.
-- Ensure a consistent formatting of question format for multiple choice:
-  ```
-  Topic: <topic>
-  Question: <Question>
-  Choices:
-  A) <...>
-  B) <...>
-  C) <...>
-  D) <...>
-  ```
-  - Provide at least 2-4 options as applicable.
-- When evaluating the user's answer, provide a brief explanation on why it is
-  correct or incorrect.
-- Ask the user if they want to talk about the topic further or move on to the
-  question. This is where the material preferences and user background come in
-  handy.
-- Keep track and show quiz progress.
-- At the end of the quiz, summarize the user's progress. Especially on topics
-  that needs improvement. Note also the topics that have been covered and not.
-  This can be used by the user later (and the AI tutor) on so they can focus on those.
-  Save this report in a file (json).
-- Keep a consistent directory where these artifact files are stored as well as
-  naming conventions.
+- Topic generation:
+  - Parse sources deterministically; deduplicate by normalized slug; keep short description per topic; append‑only JSONL to allow manual edits/merges.
+  - Respect `focus_topics` when present; otherwise discover from content and headings.
+- Question generation:
+  - Generate at least `per_topic` MCQs per topic; enforce single correct answer; plausible distractors; stem and choices concise; include brief explanation and source refs when possible.
+  - Validate format (letters A–D unique, exactly one answer, non‑empty fields). Refuse to save invalid entries with actionable error messages.
+- Selection strategy (`start`):
+  - `balanced`: Ensure each topic appears once before repeats; use RNG with `--seed` when provided.
+  - `random`: Uniform random over all questions.
+  - `weakness`: Weight selection toward topics with lower accuracy in recent summaries.
+  - Filters: `--topic` limits pool; `focus_topics` from config applies by default.
+- Session flow:
+  - Accept answers as letter (`a`/`A`) or choice text; allow `skip`, `back`, `quit`.
+  - Show correctness, short explanation, and optional source snippet.
+  - Track progress (e.g., `12/20 • 80%`), elapsed time, and per‑topic stats live.
+  - On completion, write `responses.jsonl` and `summary.json`; print a concise report and list weak topics.
+- UI:
+  - If `textual` is available, present a TUI with keyboard navigation; otherwise use simple line‑oriented prompts.
+
+### **Implementation Outline**
+
+- Pure helpers (unit testable):
+  - File discovery (`iter_quiz_files`), topic extraction, question validation, selection algorithms, scoring and summary aggregation, JSONL IO utils.
+  - Seed control via `random.Random` instances passed explicitly.
+- I/O edges and CLI (`main()`):
+  - Argparse subcommands; minimal side effects; all paths via `pathlib.Path`.
+  - AI calls isolated in `ai.py` with `load_client()`; easy to stub.
+
+### **Testing**
+
+- Unit tests with stubbed AI:
+  - Topic extraction from simple Markdown inputs (headings, bullet lists)
+  - Question validator catches bad keys, multiple answers, empty fields
+  - Selection strategies honor coverage, weakness weighting, and seeds
+  - Summary aggregation computes per‑topic accuracy correctly
+- Integration‑light tests:
+  - CLI parse for `init`, `topics generate`, `questions generate --per-topic 2`, `start --num 3 --mix balanced --dry-run`
+  - JSONL read/write round‑trip for topics/questions
+
+### **Error Messages & Remediation**
+
+- Missing or invalid `quizzer.toml`: point to `init QUIZ_NAME` to scaffold.
+- No sources resolved: suggest `--extensions`, `--level-limit`, or fix paths.
+- Invalid question format: show precise line and reason; suggest `questions validate`.
+- AI errors: explain `.env`/`OPENAI_API_KEY` support via `load_client()` and retry options.
+
+### **Security & Privacy**
+
+- No shell invocation; sanitize/resolve paths; never write outside `--out`.
+- Offline‑friendly: all AI calls optional; tests stub external clients.
 
 ### **Technology**
 
-- This will rely heavily on OpenAI for the AI tutor parts
-- The UI will be a terminal UI using `textual`
+- AI via OpenAI client from `load_client()`; light retries/backoff; timeouts configurable.
+- Optional `textual` for TUI; otherwise standard input/print for CLI.
