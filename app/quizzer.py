@@ -1026,12 +1026,6 @@ class QuizApp(App):
         self._update_stage()
         return True
 
-    def _answered_text(self) -> str:
-        return f"Answered: {len(self._selected)}/{len(self._questions)}"
-
-    def answered_count(self) -> int:
-        return len(self._selected)
-
     def _update_stage(self) -> None:
         if not self._questions:
             return
@@ -1082,6 +1076,58 @@ class QuizApp(App):
     def action_submit(self) -> None:
         # No-op for now; will evaluate/save later
         pass
+
+    def _answered_text(self) -> str:
+        return f"Answered: {len(self._selected)}/{len(self._questions)}"
+
+    def answered_count(self) -> int:
+        return len(self._selected)
+
+    def summary_page_count(self, page_size: int = 5) -> int:
+        total = len(getattr(self, "_summary", []))
+        return (total + page_size - 1) // page_size if total else 1
+
+    def summary_items_for_page(self, page: int, page_size: int = 5) -> List[Dict[str, object]]:
+        items = list(getattr(self, "_summary", []))
+        start = page * page_size
+        end = start + page_size
+        return items[start:end]
+
+
+def summarize_results(questions: Sequence[Dict[str, object]], selected: Dict[str, str]) -> List[Dict[str, object]]:
+    """Summarize results comparing selected answers to correct answers.
+
+    Returns a list with one entry per question with fields:
+    id, stem, selected, answer, correct (bool)
+    """
+    items: List[Dict[str, object]] = []
+    qmap = {str(q.get("id")): q for q in questions}
+    # Add answered first
+    for qid, choice in selected.items():
+        q = qmap.get(str(qid))
+        if not q:
+            continue
+        ans = str(q.get("answer", "")).strip().upper()
+        items.append({
+            "id": str(qid),
+            "stem": q.get("stem", ""),
+            "selected": str(choice).strip().upper(),
+            "answer": ans,
+            "correct": str(choice).strip().upper() == ans,
+        })
+    # Then unanswered
+    for q in questions:
+        qid = str(q.get("id"))
+        if qid in selected:
+            continue
+        items.append({
+            "id": qid,
+            "stem": q.get("stem", ""),
+            "selected": None,
+            "answer": str(q.get("answer", "")).strip().upper(),
+            "correct": False,
+        })
+    return items
 
 
 def _cmd_start(args: argparse.Namespace) -> int:

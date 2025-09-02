@@ -70,3 +70,22 @@ def test_quiz_app_navigation_and_selection():
     assert app.current_question()["id"] == "q2"
     app.prev_question()
     assert app.current_question()["id"] == "q1"
+
+
+def test_summarize_results_and_pagination():
+    from app import quizzer as qz
+    qs = [
+        {"id": f"q{i}", "topic_id": "t", "type": "mcq", "stem": f"Q{i}", "choices": [{"key":"A","text":"x"},{"key":"B","text":"y"}], "answer": "A", "explanation": ""}
+        for i in range(1, 13)
+    ]
+    selected = {"q1": "A", "q2": "B", "q3": "A"}
+    summary = qz.summarize_results(qs, selected)
+    m = {it["id"]: it for it in summary}
+    assert m["q1"]["correct"] is True
+    assert m["q2"]["correct"] is False
+    assert m["q4"]["selected"] is None
+    app = qz.QuizApp(qs)
+    app._summary = summary
+    assert app.summary_page_count() == 3
+    assert len(app.summary_items_for_page(0)) == 5
+    assert len(app.summary_items_for_page(2)) == 2
