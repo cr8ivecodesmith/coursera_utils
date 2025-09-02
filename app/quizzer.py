@@ -31,6 +31,11 @@ except Exception:  # pragma: no cover - fallback
     except Exception:  # pragma: no cover
         load_client = None  # type: ignore
 
+# Textual UI (interface for quiz sessions)
+from textual.app import App, ComposeResult
+from textual.widget import Widget
+from textual.widgets import Static, Button
+from textual.containers import Vertical
 
 # -----------------------------
 # Discovery
@@ -911,6 +916,87 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
     return 0
 
 
+# -----------------------------
+# Minimal Textual UI for quiz sessions
+# -----------------------------
+
+
+class QuestionView(Widget):
+    """A simple view that renders a single MCQ with choices and progress."""
+
+    def __init__(self, question: Dict[str, object], index: int, total: int) -> None:
+        super().__init__()
+        self.question = question
+        self.index = index
+        self.total = total
+
+    def compose(self) -> ComposeResult:
+        stem = str(self.question.get("stem", "")).strip()
+        yield Static(stem, id="stem")
+        choices = self.question.get("choices") or []
+        with Vertical(id="choices"):
+            for ch in choices:  # type: ignore[assignment]
+                if isinstance(ch, dict):
+                    key = str(ch.get("key", "")).upper()[:1] or "?"
+                    text = str(ch.get("text", ""))
+                else:
+                    key = "?"
+                    text = str(ch)
+                label = f"{key}) {text}"
+                yield Button(label, id=f"choice-{key}")
+        prog = f"{self.index}/{self.total}"
+        yield Static(prog, id="progress")
+
+
+class QuizApp(App):
+    CSS_PATH = None
+
+    def __init__(self, questions: Sequence[Dict[str, object]]):
+        super().__init__()
+        self._questions = list(questions)
+        self._index = 0
+
+    def compose(self) -> ComposeResult:
+        if not self._questions:
+            yield Static("No questions.", id="empty")
+            return
+        q = self._questions[self._index]
+        yield QuestionView(q, index=self._index + 1, total=len(self._questions))
+
+
+def _cmd_start(args: argparse.Namespace) -> int:
+    """Start a simple quiz session using Textual UI.
+
+    Loads questions from `.quizzer/<name>/questions.jsonl`, optionally shuffles and limits to `--num`.
+    For this initial pass, it displays questions without recording responses.
+    """
+    cfg_path = _find_config(getattr(args, "config", None))
+    if not cfg_path:
+        print("Error: quizzer.toml not found.")
+        return 2
+    cfg = _load_toml(cfg_path)
+    out_dir = _out_dir_for(args.name, cfg)
+    q_path = out_dir / "questions.jsonl"
+    if not q_path.exists():
+        print(f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'.")
+        return 1
+    questions = read_jsonl(q_path)
+    if not questions:
+        print("Question bank is empty.")
+        return 1
+    # Shuffle if requested
+    if getattr(args, "shuffle", False):
+        rnd = random.Random()
+        rnd.shuffle(questions)
+    # Apply limit
+    n = int(getattr(args, "num", 0) or 0)
+    if n > 0:
+        questions = questions[:n]
+    app = QuizApp(questions)
+    app.run()
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
@@ -925,7 +1011,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     elif args.command == "questions" and args.action == "list":
         code = _cmd_questions_list(args)
     elif args.command == "start":
-        code = _cmd_not_implemented("start")
+        code = _cmd_start(args)
     elif args.command == "review":
         code = _cmd_not_implemented("review")
     elif args.command == "report":
@@ -938,3 +1024,5 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
+
+
