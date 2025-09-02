@@ -14,3 +14,4 @@ cookie.txt
 
 cookie.txt
 .coverage*
+.pytest_cache
