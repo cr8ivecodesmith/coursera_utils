@@ -946,6 +946,20 @@ class QuestionView(Widget):
                 yield Button(label, id=f"choice-{key}")
         prog = f"{self.index}/{self.total}"
         yield Static(prog, id="progress")
+        yield Static("", id="feedback")
+
+    def compute_correct(self, key: str) -> tuple[bool, str]:
+        """Evaluate a choice key against the question's answer.
+
+        Returns (is_correct, explanation).
+        """
+        answer = str(self.question.get("answer", "")).strip().upper()
+        explanation = str(self.question.get("explanation", ""))
+        return (key.strip().upper() == answer, explanation)
+
+    def feedback_text(self, key: str) -> str:
+        ok, expl = self.compute_correct(key)
+        return "Correct." if ok else (f"Incorrect. {expl}" if expl else "Incorrect.")
 
 
 class QuizApp(App):
@@ -962,6 +976,24 @@ class QuizApp(App):
             return
         q = self._questions[self._index]
         yield QuestionView(q, index=self._index + 1, total=len(self._questions))
+
+    # Pure helpers for navigation and selection (testable without running App)
+    def current_question(self) -> Dict[str, object]:
+        return self._questions[self._index]
+
+    def next_question(self) -> int:
+        if self._index + 1 < len(self._questions):
+            self._index += 1
+        return self._index
+
+    def prev_question(self) -> int:
+        if self._index > 0:
+            self._index -= 1
+        return self._index
+
+    def select_answer(self, key: str) -> bool:
+        q = self.current_question()
+        return str(key).strip().upper() == str(q.get("answer", "")).strip().upper()
 
 
 def _cmd_start(args: argparse.Namespace) -> int:
@@ -1024,5 +1056,4 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-
 
