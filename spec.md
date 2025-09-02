@@ -213,3 +213,88 @@ Convert one or more Markdown files into a single PDF with configurable paper siz
 - Sanitize user paths; disallow writing outside the specified output
 - Stream file reads; avoid loading extremely large Markdown into memory at once when concatenating
 - Deterministic output given inputs; all randomness/AI optional and explicit
+
+## quizzer.py
+
+### **Description**
+
+An interactive script that will quiz based on given source files.
+
+### **Inputs**
+
+**Required:**
+
+- Quiz name taken from the a section provided in the config file.
+
+**Optional:**
+
+- Generate topics -- Generates topic file from the quiz source files
+- List topics -- Lists identified topics
+- Generate questions -- Generates questions and answer keys file based on configuration.
+- Questions per topic -- Number of questions to generate per topic. Default 3.
+- Create quizzer template -- Generates a quizzer.toml template file that the user
+  can edit.
+
+
+**quizzer.toml**
+
+Contains configuration for different kinds of quiz separated by sections. This
+configuration will not be provided by default and must be provided by the user.
+
+The ff. configurations will be needed:
+- Quiz source files: One or more input Markdown files or directories (recursively discovering `*.md` by default). This will be used for the questions.
+- Material references: Optional, file path. These can be raw transcript of video or audio lessons, books, articles, etc. When available, these can be used when the student wants to discuss a topic to further their understanding. Otherwise, the AI tutor will attempt to search for materials online preferring high value sources such as wikipedia. For now we'll only support text readable files.
+- Quiz types: Must support multiple choice for now.
+- Number of questions: Number of questions per quiz type.
+- Ensure complete coverage: Optional, boolean, defaults true. Ideally, at least all topics
+  can be asked at least once. If this setting is false, then in the event of 
+  (questions < topics) we just accept that. If this setting is true, we ensure that at least
+  all topics are asked once regardless of the number of questions setting.
+- Focus topics: Optional, list. Topics are first identified from the source files and stored
+  in a file. This will be used by the AI tutor to ensure coverage. When this is set,
+  It only quizzes on the given topics.
+- Topic seed: Optional, int.
+- Question seed: Optional, int.
+- User background: Optional, long string. Can be used by the AI tutor for metaphors and
+  analogies when explaining concepts to the user.
+
+
+### **Behavior**
+
+- When generating topics, ensure the topic has not yet been identified. Likewise,
+  note that there can be more than one topic file.
+- When generating questions, ensure all topics are covered. Note that there can
+  be more than one question file.
+- When selecting questions and topics, randomly select them but ensure a balanced
+  distribution or prioritize topics that have not been
+  covered. Note if a random seed is set. Ultimately, the AI tutor must also
+  take into account the user's weak areas (refers to previous summary reports
+  if available) and prefer those during the question prep process.
+- Ensure a consistent formatting of question format for multiple choice:
+  ```
+  Topic: <topic>
+  Question: <Question>
+  Choices:
+  A) <...>
+  B) <...>
+  C) <...>
+  D) <...>
+  ```
+  - Provide at least 2-4 options as applicable.
+- When evaluating the user's answer, provide a brief explanation on why it is
+  correct or incorrect.
+- Ask the user if they want to talk about the topic further or move on to the
+  question. This is where the material preferences and user background come in
+  handy.
+- Keep track and show quiz progress.
+- At the end of the quiz, summarize the user's progress. Especially on topics
+  that needs improvement. Note also the topics that have been covered and not.
+  This can be used by the user later (and the AI tutor) on so they can focus on those.
+  Save this report in a file (json).
+- Keep a consistent directory where these artifact files are stored as well as
+  naming conventions.
+
+### **Technology**
+
+- This will rely heavily on OpenAI for the AI tutor parts
+- The UI will be a terminal UI using `textual`
