@@ -92,7 +92,15 @@ def _slugify(name: str) -> str:
     return s or "topic"
 
 
-def extract_topics(sources: Iterable[Tuple[Path, str]]) -> List[Dict[str, object]]:
+def extract_topics(
+    sources: Iterable[Tuple[Path, str]],
+    *,
+    use_ai: bool = False,
+    client: object = None,
+    ai_prompt: Optional[str] = None,
+    k: Optional[int] = None,
+    seed: Optional[int] = None,
+) -> List[Dict[str, object]]:
     """Extract topics from Markdown sources.
 
     Strategy:
@@ -136,7 +144,27 @@ def extract_topics(sources: Iterable[Tuple[Path, str]]) -> List[Dict[str, object
                 "source_paths": [str(path)],
                 "created_at": "",
             }
-    return list(topics.values())
+    heuristic = list(topics.values())
+    if not use_ai:
+        return heuristic
+    ai_topics = ai_extract_topics(sources, k=k, client=client, prompt=ai_prompt, seed=seed)
+    merged: Dict[str, Dict[str, object]] = {t["id"]: t for t in heuristic}  # type: ignore[index]
+    for t in ai_topics:
+        slug = str(t.get("id") or _slugify(str(t.get("name", ""))))
+        if slug in merged:
+            if t.get("name") and len(str(t.get("name"))) > len(str(merged[slug].get("name", ""))):
+                merged[slug]["name"] = t.get("name")
+            sp = set(merged[slug].get("source_paths", [])) | set(t.get("source_paths", []) or [])  # type: ignore[arg-type]
+            merged[slug]["source_paths"] = sorted(sp)
+        else:
+            merged[slug] = {
+                "id": slug,
+                "name": t.get("name") or slug,
+                "description": t.get("description", ""),
+                "source_paths": t.get("source_paths", []) or [],
+                "created_at": "",
+            }
+    return list(merged.values())
 
 
 # -----------------------------
@@ -342,6 +370,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return p
 
 
+def ai_extract_topics(
+    sources: Iterable[Tuple[Path, str]],
+    *,
+    k: Optional[int] = None,
+    client: object = None,
+    prompt: Optional[str] = None,
+    model: str = "gpt-4o-mini",
+    temperature: float = 0.2,
+    seed: Optional[int] = None,
+) -> List[Dict[str, object]]:
+    """Suggest topics from raw text using an AI model.
+
+    Stub for now: will parse model output (JSON array of names or objects) and
+    return a list of topic dicts with id/name/description/source_paths.
+    """
+    raise NotImplementedError("ai_extract_topics is not implemented yet")
+
+
 __all__ = [
     "iter_quiz_files",
     "extract_topics",
@@ -351,4 +397,5 @@ __all__ = [
     "read_jsonl",
     "write_jsonl",
     "build_arg_parser",
+    "ai_extract_topics",
 ]

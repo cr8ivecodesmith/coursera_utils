@@ -276,6 +276,7 @@ Interactive terminal quiz tool that extracts topics and multiple‑choice questi
 - Topic generation:
   - Parse sources deterministically; deduplicate by normalized slug; keep short description per topic; append‑only JSONL to allow manual edits/merges.
   - Respect `focus_topics` when present; otherwise discover from content and headings.
+  - Optional AI assist: when enabled, prompt a model with short snippets to propose topic names/descriptions; merge with heuristic headings by slug, prefer clearer names, and keep `source_paths`.
 - Question generation:
   - Generate at least `per_topic` MCQs per topic; enforce single correct answer; plausible distractors; stem and choices concise; include brief explanation and source refs when possible.
   - Validate format (letters A–D unique, exactly one answer, non‑empty fields). Refuse to save invalid entries with actionable error messages.
@@ -296,6 +297,7 @@ Interactive terminal quiz tool that extracts topics and multiple‑choice questi
 
 - Pure helpers (unit testable):
   - File discovery (`iter_quiz_files`), topic extraction, question validation, selection algorithms, scoring and summary aggregation, JSONL IO utils.
+  - AI topic extraction helper `ai_extract_topics(sources, k, client, prompt, model, temperature, seed)` that returns suggested topics; merging logic lives in `extract_topics(use_ai=True, ...)`.
   - Seed control via `random.Random` instances passed explicitly.
 - I/O edges and CLI (`main()`):
   - Argparse subcommands; minimal side effects; all paths via `pathlib.Path`.
