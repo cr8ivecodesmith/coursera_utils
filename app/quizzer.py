@@ -23,6 +23,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+try:  # optional: reuse existing OpenAI client loader
+    from .transcribe_video import load_client  # type: ignore
+except Exception:  # pragma: no cover - fallback
+    try:
+        from transcribe_video import load_client  # type: ignore
+    except Exception:  # pragma: no cover
+        load_client = None  # type: ignore
+
 
 # -----------------------------
 # Discovery
@@ -340,6 +348,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     sp_t_gen.add_argument("--limit", type=int)
     sp_t_gen.add_argument("--extensions", nargs="+", default=["md", "markdown"], help="File extensions to include for discovery")
     sp_t_gen.add_argument("--level-limit", type=int, default=0, help="Directory depth limit (0 = no limit)")
+    sp_t_gen.add_argument("--use-ai", action="store_true", help="Use AI to assist topic extraction")
     sp_t_list = topics_sub.add_parser("list", help="List topics")
     sp_t_list.add_argument("name")
     sp_t_list.add_argument("--filter")
@@ -381,13 +390,82 @@ def ai_extract_topics(
     model: str = "gpt-4o-mini",
     temperature: float = 0.2,
     seed: Optional[int] = None,
+    source_max_lines: Optional[int] = 20,
+    source_max_lines_chars: Optional[int] = 400,
 ) -> List[Dict[str, object]]:
     """Suggest topics from raw text using an AI model.
 
-    Stub for now: will parse model output (JSON array of names or objects) and
+    Will parse model output (JSON array of names or objects) and
     return a list of topic dicts with id/name/description/source_paths.
     """
-    raise NotImplementedError("ai_extract_topics is not implemented yet")
+    # Acquire client if not provided
+    if client is None and load_client is not None:  # pragma: no cover - exercised via integration
+        try:
+            client = load_client()
+        except Exception:
+            client = None
+    if client is None:
+        return []
+
+    # Build a compact prompt using a small snippet of each source
+    parts: List[str] = []
+    for path, text in sources:
+        snippet = (text or "").strip().splitlines()
+        snippet = [ln for ln in snippet if ln.strip()][:source_max_lines]
+        joined = "\n".join(snippet[:source_max_lines_chars])
+        parts.append(f"File: {path.name}\n{joined}\n")
+    user_prompt = (
+        (prompt or "Suggest concise study topics from the following notes. Output JSON array of objects with name and optional description.")
+        + "\n\n" + "\n\n".join(parts)
+    )
+
+    try:
+        resp = client.chat.completions.create(  # type: ignore[attr-defined]
+            model=model,
+            messages=[
+                {"role": "system", "content": "You extract clean, deduplicated topic names from text."},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=temperature,
+            max_tokens=600,
+        )
+        content = (resp.choices[0].message.content or "").strip()  # type: ignore[index]
+    except Exception:
+        return []
+
+    # Parse JSON output: accept ["Topic", ...] or [{"name": "...", "description": "..."}, ...]
+    suggestions: List[Dict[str, object]] = []
+    try:
+        data = json.loads(content)
+        if isinstance(data, list):
+            for item in data[: k or len(data)]:
+                if isinstance(item, str):
+                    nm = item.strip()
+                    if not nm:
+                        continue
+                    suggestions.append({
+                        "id": _slugify(nm),
+                        "name": nm,
+                        "description": "",
+                        "source_paths": [],
+                        "created_at": "",
+                    })
+                elif isinstance(item, dict):
+                    nm = str(item.get("name", "")).strip()
+                    if not nm:
+                        continue
+                    suggestions.append({
+                        "id": _slugify(nm),
+                        "name": nm,
+                        "description": str(item.get("description", "")),
+                        "source_paths": item.get("source_paths", []) if isinstance(item.get("source_paths", []), list) else [],
+                        "created_at": "",
+                    })
+    except Exception:
+        # If the model didn't return JSON, ignore AI suggestions
+        return []
+
+    return suggestions
 
 
 __all__ = [
@@ -502,14 +580,13 @@ def _cmd_topics_generate(args: argparse.Namespace) -> int:
     if not sources:
         print(f"Error: [quiz.{args.name}] must define 'sources' list")
         return 2
-    base_dir = cfg_path.parent
-    input_paths = [ (base_dir / s).expanduser().resolve() for s in sources ]
+    input_paths = [ Path(s).expanduser().resolve() for s in sources ]
     files = iter_quiz_files(input_paths, extensions=args.extensions, level_limit=int(args.level_limit))
     if not files:
         print("No matching Markdown files found.")
         return 1
     pairs = _read_files(files)
-    topics = extract_topics(pairs, use_ai=False)
+    topics = extract_topics(pairs, use_ai=bool(args.use_ai))
     out_dir = _out_dir_for(args.name, cfg)
     out_dir.mkdir(parents=True, exist_ok=True)
     topics_path = out_dir / "topics.jsonl"
