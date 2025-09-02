@@ -358,6 +358,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     sp_q_gen = q_sub.add_parser("generate", help="Generate questions")
     sp_q_gen.add_argument("name")
     sp_q_gen.add_argument("--per-topic", type=int)
+    sp_q_gen.add_argument("--ensure-coverage", dest="ensure_coverage", action="store_true")
+    sp_q_gen.add_argument("--no-ensure-coverage", dest="ensure_coverage", action="store_false")
+    sp_q_gen.set_defaults(ensure_coverage=True)
     sp_q_list = q_sub.add_parser("list", help="List questions")
     sp_q_list.add_argument("name")
     sp_q_list.add_argument("--topics", nargs="*")
@@ -466,6 +469,221 @@ def ai_extract_topics(
         return []
 
     return suggestions
+
+
+# -----------------------------
+# Question generation
+# -----------------------------
+
+
+def ai_generate_mcqs_for_topic(
+    topic: Dict[str, object],
+    n: int = 3,
+    *,
+    client: object = None,
+    prompt: Optional[str] = None,
+    model: str = "gpt-4o-mini",
+    temperature: float = 0.2,
+    seed: Optional[int] = None,
+    context: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Generate n MCQ questions for a topic using an AI model.
+
+    Returns up to n validated MCQ dicts with normalized shape. Invalid items are skipped.
+    """
+    if n <= 0:
+        return []
+    if client is None and load_client is not None:  # pragma: no cover
+        try:
+            client = load_client()
+        except Exception:
+            client = None
+    if client is None:
+        return []
+
+    topic_id = str(topic.get("id") or _slugify(str(topic.get("name", "topic"))))
+    topic_name = str(topic.get("name") or topic_id)
+    sys_prompt = "You generate high-quality multiple-choice study questions."
+    ctx_block = ("\n\nContext (from source materials):\n" + context.strip()) if isinstance(context, str) and context.strip() else ""
+    user_prompt = (
+        (prompt or "Create concise multiple-choice questions covering the topic. Output JSON array of objects.")
+        + "\n\nSchema:\n"
+        + '{"stem": str, "choices": [str or {"key": "A", "text": str}], "answer": str, "explanation": str}\n'
+        + f"Topic: {topic_name}\n"
+        + f"Count: {n}\n"
+        + "Constraints: single correct answer; plausible distractors; avoid ambiguity; keep stems under 200 chars."
+        + ctx_block
+    )
+    try:
+        resp = client.chat.completions.create(  # type: ignore[attr-defined]
+            model=model,
+            messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+            temperature=temperature,
+            max_tokens=800,
+        )
+        content = (resp.choices[0].message.content or "").strip().replace("\n", "")  # type: ignore[index]
+    except:
+        return []
+
+    items: List[Dict[str, object]] = []
+    try:
+        pat = re.compile(r'^(```json)(.+)(```)$')
+        _data = pat.match(content)
+        if _data:
+            data = json.loads(_data.group(2))
+        else:
+            data = json.loads(content)
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+
+    def normalize_choice_list(raw_choices) -> List[Dict[str, str]]:
+        out: List[Dict[str, str]] = []
+        if isinstance(raw_choices, list):
+            for i, ch in enumerate(raw_choices):
+                if isinstance(ch, dict):
+                    key = str(ch.get("key", "")).strip() or chr(ord("A") + i)
+                    text = str(ch.get("text", "")).strip()
+                else:
+                    key = chr(ord("A") + i)
+                    text = str(ch).strip()
+                if not text:
+                    continue
+                out.append({"key": key.upper()[:1], "text": text})
+        return out
+
+    for rec in data[:n]:
+        if not isinstance(rec, dict):
+            continue
+        stem = str(rec.get("stem", "")).strip()
+        if not stem:
+            continue
+        choices = normalize_choice_list(rec.get("choices", []))
+        ans = rec.get("answer")
+        if isinstance(ans, int) and 0 <= ans < len(choices):
+            answer = choices[ans]["key"]
+        else:
+            answer = str(ans or "").strip().upper()
+            if answer and answer not in {c["key"] for c in choices}:
+                for c in choices:
+                    if answer.lower() == c["text"].lower():
+                        answer = c["key"]
+                        break
+        explanation = str(rec.get("explanation", "")).strip()
+        q = {
+            "id": rec.get("id") or f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-{len(items)}",
+            "topic_id": topic_id,
+            "type": "mcq",
+            "stem": stem,
+            "choices": choices,
+            "answer": answer,
+            "explanation": explanation,
+        }
+        try:
+            validate_mcq(q)
+        except Exception:
+            continue
+        items.append(q)
+    return items[:n]
+
+
+def _gather_topic_context(topic: Dict[str, object], max_chars: int = 4000) -> str:
+    """Read source_paths for a topic and extract relevant snippets.
+
+    Heuristics:
+    - If headings matching topic name exist, include lines until next heading
+    - Else include lines containing the topic name
+    - Concatenate across files up to max_chars
+    """
+    name = str(topic.get("name", "")).strip()
+    slug = _slugify(name) if name else str(topic.get("id", ""))
+    sources = topic.get("source_paths", []) or []
+    if not isinstance(sources, list):
+        return ""
+    parts: List[str] = []
+    pattern = re.compile(rf"^\s*#+\s+(.+)$")
+    for s in sources:
+        p = Path(s)
+        if not p.exists() or not p.is_file():
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        lines = text.splitlines()
+        collected: List[str] = []
+        capture = False
+        for ln in lines:
+            m = pattern.match(ln)
+            if m:
+                heading = m.group(1).strip().strip("# ")
+                # Start capture when heading matches name (case-insensitive)
+                capture = heading.lower() == name.lower() if name else False
+                if capture:
+                    collected.append(ln)
+                continue
+            if capture:
+                # Stop when next heading encountered
+                if ln.strip().startswith("#"):
+                    capture = False
+                else:
+                    collected.append(ln)
+        # Fallback: lines that contain topic name
+        if not collected and name:
+            for ln in lines:
+                if name.lower() in ln.lower():
+                    collected.append(ln)
+        if collected:
+            snippet = "\n".join(collected).strip()
+            if snippet:
+                parts.append(f"From {p.name}:\n{snippet}")
+        if sum(len(part) for part in parts) > max_chars:
+            break
+    out = "\n\n".join(parts)
+    return out[:max_chars]
+
+
+def generate_questions(
+    topics: Sequence[Dict[str, object]],
+    *,
+    per_topic: int = 3,
+    qtype: str = "mcq",
+    client: object = None,
+    ensure_coverage: bool = True,
+    seed: Optional[int] = None,
+) -> List[Dict[str, object]]:
+    """Generate a question bank from topics.
+
+    Calls AI generation per topic and concatenates results. For now only mcq is supported.
+    """
+    if qtype != "mcq" or per_topic <= 0:
+        return []
+    bank: List[Dict[str, object]] = []
+    for t in topics:
+        context = _gather_topic_context(t)
+        qs = ai_generate_mcqs_for_topic(t, n=per_topic, client=client, seed=seed, context=context)
+        if ensure_coverage and not qs:
+            stem = f"Which of the following relates to {t.get('name', t.get('id', 'this topic'))}?"
+            placeholder = {
+                "id": f"{t.get('id')}-ph-1",
+                "topic_id": str(t.get("id")),
+                "type": "mcq",
+                "stem": stem,
+                "choices": [
+                    {"key": "A", "text": str(t.get("name", "Concept"))},
+                    {"key": "B", "text": "None of the above"},
+                ],
+                "answer": "A",
+                "explanation": "",
+            }
+            try:
+                validate_mcq(placeholder)
+                qs = [placeholder]
+            except Exception:
+                qs = []
+        bank.extend(qs)
+    return bank
 
 
 __all__ = [
@@ -625,6 +843,74 @@ def _cmd_not_implemented(label: str) -> int:
     return 2
 
 
+def _cmd_questions_generate(args: argparse.Namespace) -> int:
+    cfg_path = _find_config(getattr(args, "config", None))
+    if not cfg_path:
+        print("Error: quizzer.toml not found. Run 'quizzer init <name>' first.")
+        return 2
+    cfg = _load_toml(cfg_path)
+    try:
+        section = _get_quiz_section(cfg, args.name)
+    except KeyError as exc:
+        print(f"Error: {exc}")
+        return 2
+    out_dir = _out_dir_for(args.name, cfg)
+    topics_path = out_dir / "topics.jsonl"
+    if not topics_path.exists():
+        print(f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'.")
+        return 1
+    topics = read_jsonl(topics_path)
+    per_topic = int(args.per_topic) if args.per_topic is not None else int(section.get("per_topic", 3))
+    ensure_coverage = bool(args.ensure_coverage) if hasattr(args, "ensure_coverage") else bool(section.get("ensure_coverage", True))
+    client = None
+    if load_client is not None:
+        try:
+            client = load_client()
+        except Exception:
+            client = None
+    questions = generate_questions(
+        topics,
+        per_topic=per_topic,
+        client=client,
+        ensure_coverage=ensure_coverage,
+    )
+    if not questions:
+        print("No questions generated.")
+        return 1
+    out_dir.mkdir(parents=True, exist_ok=True)
+    q_path = out_dir / "questions.jsonl"
+    write_jsonl(q_path, questions)
+    print(f"Wrote {len(questions)} question(s) -> {q_path}")
+    return 0
+
+
+def _cmd_questions_list(args: argparse.Namespace) -> int:
+    cfg_path = _find_config(getattr(args, "config", None))
+    if not cfg_path:
+        print("Error: quizzer.toml not found.")
+        return 2
+    cfg = _load_toml(cfg_path)
+    out_dir = _out_dir_for(args.name, cfg)
+    q_path = out_dir / "questions.jsonl"
+    if not q_path.exists():
+        print(f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'.")
+        return 1
+    questions = read_jsonl(q_path)
+    topics_filter = set(args.topics or [])
+    shown = 0
+    for q in questions:
+        t = str(q.get("topic_id", ""))
+        if topics_filter and t not in topics_filter:
+            continue
+        stem = str(q.get("stem", ""))
+        print(f"[{t}] {stem[:100]}")
+        shown += 1
+    if shown == 0:
+        print("No questions to show with given filters.")
+        return 1
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
@@ -634,8 +920,10 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         code = _cmd_topics_generate(args)
     elif args.command == "topics" and args.action == "list":
         code = _cmd_topics_list(args)
-    elif args.command == "questions":
-        code = _cmd_not_implemented("questions subcommands")
+    elif args.command == "questions" and args.action == "generate":
+        code = _cmd_questions_generate(args)
+    elif args.command == "questions" and args.action == "list":
+        code = _cmd_questions_list(args)
     elif args.command == "start":
         code = _cmd_not_implemented("start")
     elif args.command == "review":
