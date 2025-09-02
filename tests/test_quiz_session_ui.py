@@ -61,7 +61,9 @@ def test_quiz_app_navigation_and_selection():
     app = qz.QuizApp(qs)
     assert app.current_question()["id"] == "q1"
     assert app.select_answer("A") is True
-    assert app.select_answer("B") is True
+    app.action_select_b()
+    qid = app.current_question()["id"]
+    assert app._selected.get(qid) == "B"
     app.next_question()
     assert app.current_question()["id"] == "q2"
     app.prev_question()

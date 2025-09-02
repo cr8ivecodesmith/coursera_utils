@@ -944,7 +944,13 @@ class QuestionView(Widget):
                     key = "?"
                     text = str(ch)
                 label = f"{key}) {text}"
-                yield Button(label, id=f"choice-{key}")
+                btn = Button(label, id=f'choice-{key}')
+                if self.selected and key == self.selected:
+                    try:
+                        btn.add_class('selected')
+                    except Exception:
+                        pass
+                yield btn
         prog = f"{self.index}/{self.total}"
         yield Static(prog, id="progress")
         status = f"Selected: {self.selected}" if self.selected else ""
@@ -966,7 +972,11 @@ class QuestionView(Widget):
 
 class QuizApp(App):
     CSS_PATH = None
-    BINDINGS = [("n","next","Next"),("p","prev","Prev"),("a","select_a","Select A"),("b","select_b","Select B"),("c","select_c","Select C"),("d","select_d","Select D")]
+    CSS = """
+#choices Button.selected { background: $accent; color: black; }
+#nav { color: $text; }
+"""
+    BINDINGS = [("n","next","Next"),("p","prev","Prev"),("a","select_a","Select A"),("b","select_b","Select B"),("c","select_c","Select C"),("d","select_d","Select D"),("enter","submit","Submit"),("s","submit","Submit")]
 
     def __init__(self, questions: Sequence[Dict[str, object]]):
         super().__init__()
@@ -983,7 +993,8 @@ class QuizApp(App):
             qid = str(q.get("id", self._index))
             sel = self._selected.get(qid)
             yield QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel)
-        yield Static("[n] Next  [p] Prev  [A-D] Select", id="nav")
+        yield Static("[n] Next  [p] Prev  [A-D] Select  [Enter] Submit", id="nav")
+        yield Button("Submit", id="submit")
 
     # Pure helpers for navigation and selection (testable without running App)
     def current_question(self) -> Dict[str, object]:
@@ -1041,6 +1052,17 @@ class QuizApp(App):
 
     def action_select_d(self) -> None:
         self.select_answer("D")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = getattr(event.button, "id", "") or ""
+        if bid.startswith("choice-") and len(bid) >= 8:
+            self.select_answer(bid[-1])
+        elif bid == "submit":
+            self.action_submit()
+
+    def action_submit(self) -> None:
+        # No-op for now; will evaluate/save later
+        pass
 
 
 def _cmd_start(args: argparse.Namespace) -> int:
