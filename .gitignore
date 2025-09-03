@@ -15,3 +15,6 @@ cookie.txt
 cookie.txt
 .coverage*
 .pytest_cache
+
+.quizzer
+quizzer.toml
