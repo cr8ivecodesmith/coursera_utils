@@ -4,8 +4,15 @@ from pathlib import Path
 
 # Ensure project root is importable
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+addtl_paths = (
+    ROOT.joinpath('app', 'quizzer'),
+    ROOT.joinpath('app'),
+    ROOT,
+)
+addtl_paths = (i for i in addtl_paths if str(i) not in sys.path)
+
+for i in addtl_paths:
+    sys.path.insert(0, str(i))
 
 # Stub out heavy/optional deps at import time so tests can import transcribe_video
 if 'pydub' not in sys.modules:

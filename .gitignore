@@ -6,6 +6,7 @@ __pycache__
 
 *.pkl
 .env
+.ropeproject
 
 .python-version
 

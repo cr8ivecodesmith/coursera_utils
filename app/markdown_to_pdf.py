@@ -129,15 +129,15 @@ def parse_margin_shorthand(margin: Optional[str]) -> Optional[Margin]:
     parts = [p for p in margin.strip().split() if p]
     vals = [_validate_unit(p) for p in parts]
     if len(vals) == 1:
-        t = r = b = l = vals[0]
+        t = r = b = l = vals[0]  #noqa - fix later
     elif len(vals) == 2:
         t = b = vals[0]
-        r = l = vals[1]
+        r = l = vals[1]  #noqa - fix later
     elif len(vals) == 3:
         t, r, b = vals
-        l = r
+        l = r  #noqa - fix later
     elif len(vals) == 4:
-        t, r, b, l = vals
+        t, r, b, l = vals  #noqa - fix later
     else:
         raise ValueError("Margin accepts 1-4 CSS size values (e.g., '1in' or '1in 0.5in').")
     return Margin(top=t, right=r, bottom=b, left=l)
