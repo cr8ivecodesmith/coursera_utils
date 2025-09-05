@@ -1,4 +1,4 @@
-from ._main import main, build_arg_parse
+from ._main import main, build_arg_parser
 from .utils import (
     iter_quiz_files,
     write_jsonl,
