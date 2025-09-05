@@ -1,4 +1,4 @@
-from ._main import main, build_arg_parser
+from ._main import build_arg_parser
 from .utils import (
     iter_quiz_files,
     write_jsonl,
@@ -15,7 +15,3 @@ from .view.quiz import (
     summarize_results, aggregate_summary,
     QuizApp, QuestionView,
 )
-
-
-if __name__ == "__main__":  # pragma: no cover
-    main()
