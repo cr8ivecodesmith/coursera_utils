@@ -1,8 +1,17 @@
-openai
-pydub
-speechrecognition
+# Video / Resource downloader
 yt-dlp[default]
 dl-coursera
+
+# Transcription and audio
+pydub
+speechrecognition
+
+# AI / RAG
+openai
+langchain
+tiktoken
+unstructured
+faiss-cpu
 
 # Utils
 python-dotenv
