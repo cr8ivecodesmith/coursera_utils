@@ -15,7 +15,7 @@ def test_iter_quiz_files_discovers_markdown(tmp_path: Path):
     (tmp_path / "b" / "c").mkdir()
     (tmp_path / "b" / "c" / "deep.md").write_text("# Deep\n")
 
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     # level_limit=1 should not include b/c/deep.md when starting at b
     files = qz.iter_quiz_files([tmp_path / "a", tmp_path / "b"], extensions=("md", "markdown"), level_limit=1)
@@ -40,7 +40,7 @@ def test_extract_topics_simple_headings(tmp_path: Path):
     f = tmp_path / "notes.md"
     f.write_text(md)
 
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     topics = qz.extract_topics([(f, md)])
     names = {t["name"] for t in topics}
@@ -54,7 +54,7 @@ def test_extract_topics_simple_headings(tmp_path: Path):
 
 
 def test_validate_mcq_happy_and_errors():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     ok = {
         "id": "q1",
@@ -114,7 +114,7 @@ def _mk_q(topic: str, idx: int) -> dict:
 
 
 def test_select_questions_balanced_and_seed():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     bank = [_mk_q("t1", i) for i in range(3)] + [_mk_q("t2", i) for i in range(3)]
     selected = qz.select_questions(bank, strategy="balanced", num=4, per_topic_stats=None, seed=42)
@@ -129,7 +129,7 @@ def test_select_questions_balanced_and_seed():
 
 
 def test_select_questions_weakness_weighting():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     bank = [_mk_q("t1", i) for i in range(10)] + [_mk_q("t2", i) for i in range(10)]
     stats = {"t1": {"asked": 10, "correct": 9}, "t2": {"asked": 10, "correct": 2}}
@@ -142,7 +142,7 @@ def test_select_questions_weakness_weighting():
 
 
 def test_aggregate_summary():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     resp = [
         {"question_id": "t1-1", "topic_id": "t1", "given": "A", "correct": True, "duration_sec": 3.0},
@@ -158,7 +158,7 @@ def test_aggregate_summary():
 
 
 def test_jsonl_round_trip(tmp_path: Path):
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     topics = [
         {"id": "intro", "name": "Intro", "description": "...", "source_paths": ["/x"], "created_at": "2020-01-01T00:00:00Z"},
@@ -171,7 +171,7 @@ def test_jsonl_round_trip(tmp_path: Path):
 
 
 def test_cli_parse_subcommands():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     parser: argparse.ArgumentParser = qz.build_arg_parser()
 
@@ -183,4 +183,3 @@ def test_cli_parse_subcommands():
 
     ns = parser.parse_args(["start", "myquiz", "--num", "10", "--mix", "balanced"]) 
     assert ns.command == "start" and ns.num == 10 and ns.mix == "balanced"
-

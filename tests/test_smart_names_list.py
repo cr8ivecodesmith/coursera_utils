@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-import app.transcribe_video as tv
+import study_utils.transcribe_video as tv
 
 
 def run_main_with_args(args):

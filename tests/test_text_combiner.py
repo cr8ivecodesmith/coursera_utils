@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import app.text_combiner as tc
+import study_utils.text_combiner as tc
 
 
 def test_parse_extensions_defaults_and_normalization():

@@ -1,4 +1,4 @@
-from app import quizzer as qz
+from study_utils import quizzer as qz
 from textual.widgets import Button, Static
 
 
@@ -73,7 +73,7 @@ def test_quiz_app_navigation_and_selection():
 
 
 def test_summarize_results_and_pagination():
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
     qs = [
         {"id": f"q{i}", "topic_id": "t", "type": "mcq", "stem": f"Q{i}", "choices": [{"key":"A","text":"x"},{"key":"B","text":"y"}], "answer": "A", "explanation": ""}
         for i in range(1, 13)

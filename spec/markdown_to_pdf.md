@@ -4,7 +4,7 @@ Markdown to PDF
 ## **Sources**
 
 Main module:
-- `app/markdown_to_pdf.py`
+- `src/study_utils/markdown_to_pdf.py`
 
 ## **Description**
 
@@ -73,19 +73,19 @@ Convert one or more Markdown files into a single PDF with configurable paper siz
 - Default orientation: `portrait`
 - Default TOC: off
 - Default title template: simple centered layout with document metadata; single page
-- Optional `app/pdf_defaults.toml` for persistent defaults:
+- Optional `study_utils/pdf_defaults.toml` for persistent defaults:
   - `[defaults] paper_size = "a4"; margin = "1cm"; orientation = "portrait"; toc = false
-  - `[style] css = "app/resources/print.css"`
+  - `[style] css = "study_utils/resources/print.css"`
   - `[ai] model = "gpt-4o-mini"; max_tokens = 200; temperature = 0.3`
 
 ## **CLI Usage**
 
-- `python -m app.markdown_to_pdf OUTPUT.pdf INPUTS... [options]`
+- `python -m study_utils.markdown_to_pdf OUTPUT.pdf INPUTS... [options]`
 - Examples:
-  - `python -m app.markdown_to_pdf out.pdf notes.md --toc --paper-size a4`
-  - `python -m app.markdown_to_pdf out.pdf docs/ --level-limit 2 --margin "1in 0.75in"`
-  - `python -m app.markdown_to_pdf out.pdf intro.md chapter*.md --title-page --title "My Guide" --author "Me"`
-  - `python -m app.markdown_to_pdf out.pdf README.md --ai-title --toc`
+- `python -m study_utils.markdown_to_pdf out.pdf notes.md --toc --paper-size a4`
+- `python -m study_utils.markdown_to_pdf out.pdf docs/ --level-limit 2 --margin "1in 0.75in"`
+- `python -m study_utils.markdown_to_pdf out.pdf intro.md chapter*.md --title-page --title "My Guide" --author "Me"`
+- `python -m study_utils.markdown_to_pdf out.pdf README.md --ai-title --toc`
 
 ## **Implementation Outline**
 

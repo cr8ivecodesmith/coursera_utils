@@ -27,10 +27,10 @@ try:
 except Exception:  # pragma: no cover - fallback if relative import fails
     from text_combiner import iter_text_files, read_text_file  # type: ignore
 
-try:  # Prefer relative import for app layout
+try:  # Prefer relative import for src/ layout
     from .transcribe_video import load_client  # type: ignore
-except Exception:  # pragma: no cover - fallback
-    from transcribe_video import load_client  # type: ignore
+except Exception:  # pragma: no cover - fallback when executed differently
+    from study_utils.transcribe_video import load_client  # type: ignore
 
 
 # -----------------------------
@@ -77,7 +77,7 @@ def find_config_path(arg: Optional[str]) -> Path:
     Priority:
     1) --config if provided
     2) ./documents.toml in current working directory
-    3) app/documents.toml alongside this module
+    3) study_utils/documents.toml alongside this module
     Raises FileNotFoundError if none exist.
     """
     if arg:
@@ -93,7 +93,7 @@ def find_config_path(arg: Optional[str]) -> Path:
     bundled = Path(__file__).resolve().parent / "documents.toml"
     if bundled.exists():
         return bundled
-    raise FileNotFoundError("documents.toml not found (checked CWD and app/)")
+    raise FileNotFoundError("documents.toml not found (checked CWD and study_utils/)")
 
 
 def load_documents_config(path: Path) -> Dict[str, Dict[str, str]]:
@@ -251,7 +251,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="File extensions to include (e.g. txt md markdown). Defaults include txt, md, markdown",
     )
     p.add_argument("--level-limit", type=int, default=0, help="Directory depth to traverse for directories")
-    p.add_argument("--config", help="Path to documents.toml. Defaults to ./documents.toml then bundled app/documents.toml")
+    p.add_argument("--config", help="Path to documents.toml. Defaults to ./documents.toml then bundled study_utils/documents.toml")
     return p
 
 
@@ -290,4 +290,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import types
 
-import app.generate_document as gd
+import study_utils.generate_document as gd
 
 
 def test_parse_extensions_defaults_and_normalization():
@@ -12,7 +12,7 @@ def test_parse_extensions_defaults_and_normalization():
 
 
 def test_load_documents_config_bundled_and_find_path():
-    # Should find bundled app/documents.toml when none is provided
+    # Should find bundled study_utils/documents.toml when none is provided
     cfg_path = gd.find_config_path(None)
     cfg = gd.load_documents_config(cfg_path)
     # Ensure expected defaults exist
@@ -106,4 +106,3 @@ def test_generate_document_no_matching_files_raises(tmp_path: Path, monkeypatch)
         assert "No matching reference files" in str(e)
     else:
         raise AssertionError("Expected FileNotFoundError when no files matched")
-

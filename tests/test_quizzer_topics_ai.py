@@ -3,7 +3,7 @@ import pytest
 
 
 def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):
-    from app import quizzer as qz
+    from study_utils import quizzer as qz
 
     md = """
     # Intro

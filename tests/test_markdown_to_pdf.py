@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from app.markdown_to_pdf import (
+from study_utils.markdown_to_pdf import (
     build_markdown_it,
     build_page_css,
     default_title_template,
@@ -68,4 +68,3 @@ def test_iter_markdown_files_and_sort(tmp_path: Path):
     # should include a, b, x
     names = sorted([p.name for p in files])
     assert names == ["a.md", "b.markdown", "x.md"]
-

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import app.transcribe_video as tv
+import study_utils.transcribe_video as tv
 
 
 def test_parse_prefix_and_build_counter_widths():

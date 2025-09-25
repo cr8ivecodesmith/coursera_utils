@@ -4,7 +4,7 @@ Generate Document Spec
 ## **Sources**
 
 Main module:
-- `app/generate_document.py`
+- `src/study_utils/generate_document.py`
 
 
 ## **Description**
@@ -28,7 +28,7 @@ will use to filter the files types to process.
 text files. Defaults to 0, for no limit. Any integer >= 1 will traverse
 accordingly.
 - `--config`: Path to a toml config file. Defaults to looking for a 
-  `documents.toml` file where the script is run, then inside script's app
+  `documents.toml` file where the script is run, then inside the package directory
   module. Raises an error when no config is found with valid content.
 
 **`documents.toml`**

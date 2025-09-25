@@ -340,7 +340,7 @@ def generate_ai_title_fields(
             # Local import to avoid hard dependency on import time
             from .transcribe_video import load_client  # type: ignore
         except Exception:
-            from app.transcribe_video import load_client  # type: ignore
+            from study_utils.transcribe_video import load_client  # type: ignore
     except Exception:
         return TitleFields()
 

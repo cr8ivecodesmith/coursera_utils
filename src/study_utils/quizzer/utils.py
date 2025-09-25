@@ -6,9 +6,9 @@ from typing import Optional, List, Sequence, Tuple
 
 try:  # optional: reuse existing OpenAI client loader
     from ..transcribe_video import load_client  # type: ignore
-except Exception:  # pragma: no cover - fallback
+except Exception:  # pragma: no cover - fallback for legacy layout
     try:
-        from app.transcribe_video import load_client  # type: ignore
+        from study_utils.transcribe_video import load_client  # type: ignore
     except Exception:  # pragma: no cover
         load_client = None  # type: ignore
 
@@ -23,7 +23,7 @@ def _find_config(explicit: Optional[str]) -> Optional[Path]:
     p = Path("quizzer.toml").resolve()
     if p.exists():
         return p
-    # Fallback to app defaults (not provided yet)
+    # Fallback to bundled defaults (not provided yet)
     return None
 
 

@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "study-utils"
+version = "0.1.0"
+description = "Study utilities for transcription, document generation, and quiz prep."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Matt" }]
+dependencies = [
+  "yt-dlp[default]",
+  "dl-coursera",
+  "pydub",
+  "SpeechRecognition",
+  "openai",
+  "langchain",
+  "tiktoken",
+  "unstructured",
+  "faiss-cpu",
+  "python-dotenv",
+  "markdown-it-py>=3.0.0",
+  "Jinja2>=3.1",
+  "Pygments>=2.15",
+  "weasyprint>=60.0",
+  "textual",
+  "rich",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "flake8",
+  "pep8-naming",
+  "coverage",
+  "pytest-xdist",
+  "pytest-cov",
+  "ruff",
+]
+
+[project.scripts]
+transcribe-video = "study_utils.transcribe_video:main"
+text-combiner = "study_utils.text_combiner:main"
+generate-document = "study_utils.generate_document:main"
+quizzer = "study_utils.quizzer._main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+study_utils = [
+  "documents.toml",
+  "resources/*.css",
+  "quizzer/view/*.tcss",
+]
+
+[tool.uv]
+dev-dependencies = [
+  "pytest",
+  "flake8",
+  "pep8-naming",
+  "coverage",
+  "pytest-xdist",
+  "pytest-cov",
+  "ruff",
+]

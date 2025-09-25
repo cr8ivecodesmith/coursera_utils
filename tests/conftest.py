@@ -5,8 +5,8 @@ from pathlib import Path
 # Ensure project root is importable
 ROOT = Path(__file__).resolve().parents[1]
 addtl_paths = (
-    ROOT.joinpath('app', 'quizzer'),
-    ROOT.joinpath('app'),
+    ROOT.joinpath('src'),
+    ROOT.joinpath('src', 'study_utils', 'quizzer'),
     ROOT,
 )
 addtl_paths = (i for i in addtl_paths if str(i) not in sys.path)

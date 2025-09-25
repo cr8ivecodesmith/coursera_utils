@@ -22,11 +22,11 @@ from typing import Iterable, Iterator, List, Optional, Sequence, Set, Tuple
 
 
 # We reuse load_client from sibling transcribe_video to avoid duplicating env handling
-try:  # prefer relative import for new app/ layout
+try:  # prefer relative import for the src/ layout
     from .transcribe_video import load_client  # type: ignore
 except Exception:  # pragma: no cover - fallback to top-level shim if present
     try:
-        from transcribe_video import load_client  # type: ignore
+        from study_utils.transcribe_video import load_client  # type: ignore
     except Exception:  # final fallback when unavailable (AI titles disabled)
         load_client = None  # type: ignore
 

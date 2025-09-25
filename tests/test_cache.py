@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 
-import app.transcribe_video as tv
+import study_utils.transcribe_video as tv
 
 
 def test_save_and_load_cache_v2_roundtrip(tmp_path):

@@ -4,7 +4,7 @@ Text Combiner Spec
 ## **Sources**
 
 Main module:
-- `app/text_combiner.py`
+- `src/study_utils/text_combiner.py`
 
 
 ## **Description**

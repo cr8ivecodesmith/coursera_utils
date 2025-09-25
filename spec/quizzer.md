@@ -3,7 +3,7 @@ Quizzer Spec
 
 ## **Sources**
 
-- `app/quizzer.py`
+- `src/study_utils/quizzer`
 
 ## **Description**
 
@@ -16,9 +16,9 @@ Interactive terminal quiz tool that extracts topics and multiple‑choice questi
 
 ## **CLI**
 
-- Base: `python -m app.quizzer [command] [options]`
+- Base: `python -m study_utils.quizzer [command] [options]`
 - Global options:
-  - `--config PATH`: Path to `quizzer.toml` (default: look in CWD, then `app/`).
+- `--config PATH`: Path to `quizzer.toml` (default: look in CWD, then `study_utils/`).
   - `--out DIR`: Artifacts directory (default: `.quizzer/<quiz_name>` under CWD).
   - `--model NAME`: Override AI model for this run.
   - `--seed INT`: Global RNG seed for deterministic selection.
@@ -119,4 +119,3 @@ Interactive terminal quiz tool that extracts topics and multiple‑choice questi
 
 - AI via OpenAI client from `load_client()`; light retries/backoff; timeouts configurable.
 - Optional `textual` for TUI; otherwise standard input/print for CLI.
-

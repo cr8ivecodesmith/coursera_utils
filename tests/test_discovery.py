@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import app.transcribe_video as tv
+import study_utils.transcribe_video as tv
 
 
 def test_find_video_files_top_level_vs_recursive(tmp_path):

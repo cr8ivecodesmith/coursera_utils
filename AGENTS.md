@@ -48,28 +48,29 @@ Testing Philosophy
   conditions, and cache upgrade paths.
 - Speed: Keep tests fast. Use temp dirs (`tmp_path`) and avoid large fixtures.
 - Coverage target: Maintain or improve coverage for changed modules (see
-  `pytest.ini` which runs `--cov=app`).
+  `pytest.ini` which runs `--cov=study_utils`).
 
 
 Tooling & Commands
 ------------------
 - Install (dev): `pip install -r requirements_dev.txt`
 - Lint: run `ruff` and `flake8` on changed files only.
-  - Example: `ruff check transcribe_video.py` and `flake8 transcribe_video.py`
+  - Example: `ruff check src/study_utils/transcribe_video.py` and `flake8 src/study_utils/transcribe_video.py`
 - Format: use `black` on changed files.
-  - Example: `black transcribe_video.py`
+  - Example: `black src/study_utils/transcribe_video.py`
 - Tests: `pytest -q` (configured with `-n auto` and coverage in `pytest.ini`).
 - Fast search: prefer `rg` (ripgrep) for code search over `grep`.
 
 
 Running Tests (practical tips)
 ------------------------------
-- Default: `pytest -q` (parallel via `-n auto`, coverage on `app/`).
+- Default: `pytest -q` (parallel via `-n auto`, coverage on `study_utils/`).
 - Subset: `pytest -q -k text_combiner` or `pytest tests/test_text_combiner.py -q`.
 - Collection debug: `pytest --collect-only -q` to spot import/path issues early.
 - Bypass repo config (debug): `pytest -q -c /dev/null tests/test_text_combiner.py` to ignore `pytest.ini` when isolating failures.
-- App package layout: modules live under `app/` and can be run as `python -m app.transcribe_video` or `python -m app.text_combiner`.
-- Back-compat shim: tests import `transcribe_video` directly; a small `transcribe_video.py` at repo root re-exports `app.transcribe_video` so imports remain stable.
+- Package layout: modules live under `src/study_utils/` and can be run as
+  `python -m study_utils.transcribe_video` or `python -m study_utils.text_combiner`
+  once the project is installed (e.g., `uv pip install -e .`).
 - Heavy deps are stubbed in `tests/conftest.py` (e.g., `openai`, `pydub`), keeping unit tests fast and offline.
 
 

@@ -12,6 +12,13 @@ __pycache__
 
 cookie.txt
 
+*.egg-info
+dist
+build
+.eggs
+*.egg
+pip-wheel-metadata
+*.log
 
 cookie.txt
 .coverage*
@@ -19,3 +26,12 @@ cookie.txt
 
 .quizzer
 quizzer.toml
+
+next_steps.md
+.DS_Store
+.vscode
+.idea
+*.iml
+*.iws
+out/
+
