@@ -9,7 +9,9 @@ from typing import Optional, List, Sequence, Tuple, Iterable, Dict
 from ..utils import load_client, _slugify
 
 
-def _gather_topic_context(topic: Dict[str, object], max_chars: int = 4000) -> str:
+def _gather_topic_context(
+    topic: Dict[str, object], max_chars: int = 4000
+) -> str:
     """Read source_paths for a topic and extract relevant snippets.
 
     Heuristics:
@@ -102,7 +104,11 @@ def select_questions(
     if strategy == "weakness":
         weights: List[float] = []
         for t in topics:
-            s = per_topic_stats.get(t, {"asked": 0, "correct": 0}) if per_topic_stats else {"asked": 0, "correct": 0}
+            s = (
+                per_topic_stats.get(t, {"asked": 0, "correct": 0})
+                if per_topic_stats
+                else {"asked": 0, "correct": 0}
+            )
             asked = max(1, int(s.get("asked", 0)))
             correct = max(0, int(s.get("correct", 0)))
             acc = correct / asked
@@ -148,7 +154,9 @@ def generate_questions(
     bank: List[Dict[str, object]] = []
     for t in topics:
         context = _gather_topic_context(t)
-        qs = ai_generate_mcqs_for_topic(t, n=per_topic, client=client, seed=seed, context=context)
+        qs = ai_generate_mcqs_for_topic(
+            t, n=per_topic, client=client, seed=seed, context=context
+        )
         if ensure_coverage and not qs:
             stem = f"Which of the following relates to {t.get('name', t.get('id', 'this topic'))}?"
             placeholder = {
@@ -231,9 +239,16 @@ def ai_generate_mcqs_for_topic(
     topic_id = str(topic.get("id") or _slugify(str(topic.get("name", "topic"))))
     topic_name = str(topic.get("name") or topic_id)
     sys_prompt = "You generate high-quality multiple-choice study questions."
-    ctx_block = ("\n\nContext (from source materials):\n" + context.strip()) if isinstance(context, str) and context.strip() else ""
+    ctx_block = (
+        ("\n\nContext (from source materials):\n" + context.strip())
+        if isinstance(context, str) and context.strip()
+        else ""
+    )
     user_prompt = (
-        (prompt or "Create concise multiple-choice questions covering the topic. Output JSON array of objects.")
+        (
+            prompt
+            or "Create concise multiple-choice questions covering the topic. Output JSON array of objects."
+        )
         + "\n\nSchema:\n"
         + '{"stem": str, "choices": [str or {"key": "A", "text": str}], "answer": str, "explanation": str}\n'
         + f"Topic: {topic_name}\n"
@@ -244,17 +259,22 @@ def ai_generate_mcqs_for_topic(
     try:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=model,
-            messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
             temperature=temperature,
             max_tokens=800,
         )
-        content = (resp.choices[0].message.content or "").strip().replace("\n", "")  # type: ignore[index]
+        content = (
+            (resp.choices[0].message.content or "").strip().replace("\n", "")
+        )  # type: ignore[index]
     except Exception:
         return []
 
     items: List[Dict[str, object]] = []
     try:
-        pat = re.compile(r'^(```json)(.+)(```)$')
+        pat = re.compile(r"^(```json)(.+)(```)$")
         _data = pat.match(content)
         if _data:
             data = json.loads(_data.group(2))
@@ -299,7 +319,8 @@ def ai_generate_mcqs_for_topic(
                         break
         explanation = str(rec.get("explanation", "")).strip()
         q = {
-            "id": rec.get("id") or f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-{len(items)}",
+            "id": rec.get("id")
+            or f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-{len(items)}",
             "topic_id": topic_id,
             "type": "mcq",
             "stem": stem,
@@ -333,7 +354,9 @@ def ai_extract_topics(
     return a list of topic dicts with id/name/description/source_paths.
     """
     # Acquire client if not provided
-    if client is None and load_client is not None:  # pragma: no cover - exercised via integration
+    if (
+        client is None and load_client is not None
+    ):  # pragma: no cover - exercised via integration
         try:
             client = load_client()
         except Exception:
@@ -349,15 +372,22 @@ def ai_extract_topics(
         joined = "\n".join(snippet[:source_max_lines_chars])
         parts.append(f"File: {path.name}\n{joined}\n")
     user_prompt = (
-        (prompt or "Suggest concise study topics from the following notes. Output JSON array of objects with name and optional description.")
-        + "\n\n" + "\n\n".join(parts)
+        (
+            prompt
+            or "Suggest concise study topics from the following notes. Output JSON array of objects with name and optional description."
+        )
+        + "\n\n"
+        + "\n\n".join(parts)
     )
 
     try:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=model,
             messages=[
-                {"role": "system", "content": "You extract clean, deduplicated topic names from text."},
+                {
+                    "role": "system",
+                    "content": "You extract clean, deduplicated topic names from text.",
+                },
                 {"role": "user", "content": user_prompt},
             ],
             temperature=temperature,
@@ -377,24 +407,30 @@ def ai_extract_topics(
                     nm = item.strip()
                     if not nm:
                         continue
-                    suggestions.append({
-                        "id": _slugify(nm),
-                        "name": nm,
-                        "description": "",
-                        "source_paths": [],
-                        "created_at": "",
-                    })
+                    suggestions.append(
+                        {
+                            "id": _slugify(nm),
+                            "name": nm,
+                            "description": "",
+                            "source_paths": [],
+                            "created_at": "",
+                        }
+                    )
                 elif isinstance(item, dict):
                     nm = str(item.get("name", "")).strip()
                     if not nm:
                         continue
-                    suggestions.append({
-                        "id": _slugify(nm),
-                        "name": nm,
-                        "description": str(item.get("description", "")),
-                        "source_paths": item.get("source_paths", []) if isinstance(item.get("source_paths", []), list) else [],
-                        "created_at": "",
-                    })
+                    suggestions.append(
+                        {
+                            "id": _slugify(nm),
+                            "name": nm,
+                            "description": str(item.get("description", "")),
+                            "source_paths": item.get("source_paths", [])
+                            if isinstance(item.get("source_paths", []), list)
+                            else [],
+                            "created_at": "",
+                        }
+                    )
     except Exception:
         # If the model didn't return JSON, ignore AI suggestions
         return []
@@ -457,14 +493,20 @@ def extract_topics(
     heuristic = list(topics.values())
     if not use_ai:
         return heuristic
-    ai_topics = ai_extract_topics(sources, k=k, client=client, prompt=ai_prompt, seed=seed)
+    ai_topics = ai_extract_topics(
+        sources, k=k, client=client, prompt=ai_prompt, seed=seed
+    )
     merged: Dict[str, Dict[str, object]] = {t["id"]: t for t in heuristic}  # type: ignore[index]
     for t in ai_topics:
         slug = str(t.get("id") or _slugify(str(t.get("name", ""))))
         if slug in merged:
-            if t.get("name") and len(str(t.get("name"))) > len(str(merged[slug].get("name", ""))):
+            if t.get("name") and len(str(t.get("name"))) > len(
+                str(merged[slug].get("name", ""))
+            ):
                 merged[slug]["name"] = t.get("name")
-            sp = set(merged[slug].get("source_paths", [])) | set(t.get("source_paths", []) or [])  # type: ignore[arg-type]
+            sp = set(merged[slug].get("source_paths", [])) | set(
+                t.get("source_paths", []) or []
+            )  # type: ignore[arg-type]
             merged[slug]["source_paths"] = sorted(sp)
         else:
             merged[slug] = {

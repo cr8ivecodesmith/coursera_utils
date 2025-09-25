@@ -10,6 +10,7 @@ Design:
 - Pure helper functions for discovery, CSS generation, Markdown→HTML, TOC, and templating.
 - I/O and WeasyPrint usage isolated in main().
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +48,7 @@ class TitleFields:
 
 
 # ------------- Discovery -------------
+
 
 def _is_md(path: Path, exts: Sequence[str]) -> bool:
     e = path.suffix.lower().lstrip(".")
@@ -128,17 +130,19 @@ def parse_margin_shorthand(margin: Optional[str]) -> Optional[Margin]:
     parts = [p for p in margin.strip().split() if p]
     vals = [_validate_unit(p) for p in parts]
     if len(vals) == 1:
-        t = r = b = l = vals[0]  #noqa - fix later
+        t = r = b = l = vals[0]  # noqa - fix later
     elif len(vals) == 2:
         t = b = vals[0]
-        r = l = vals[1]  #noqa - fix later
+        r = l = vals[1]  # noqa - fix later
     elif len(vals) == 3:
         t, r, b = vals
-        l = r  #noqa - fix later
+        l = r  # noqa - fix later
     elif len(vals) == 4:
-        t, r, b, l = vals  #noqa - fix later
+        t, r, b, l = vals  # noqa - fix later
     else:
-        raise ValueError("Margin accepts 1-4 CSS size values (e.g., '1in' or '1in 0.5in').")
+        raise ValueError(
+            "Margin accepts 1-4 CSS size values (e.g., '1in' or '1in 0.5in')."
+        )
     return Margin(top=t, right=r, bottom=b, left=l)
 
 
@@ -154,11 +158,15 @@ def build_page_css(
 ) -> str:
     size_keyword = PAPER_SIZES.get(paper_size.lower())
     if not size_keyword:
-        raise ValueError(f"Unsupported paper size: {paper_size}. Choose from {sorted(PAPER_SIZES)}")
+        raise ValueError(
+            f"Unsupported paper size: {paper_size}. Choose from {sorted(PAPER_SIZES)}"
+        )
     if orientation not in {"portrait", "landscape"}:
         raise ValueError("orientation must be 'portrait' or 'landscape'")
 
-    base = parse_margin_shorthand(margin_shorthand) or Margin("1cm", "1cm", "1cm", "1cm")
+    base = parse_margin_shorthand(margin_shorthand) or Margin(
+        "1cm", "1cm", "1cm", "1cm"
+    )
     top = _validate_unit(margin_top) if margin_top else base.top
     right = _validate_unit(margin_right) if margin_right else base.right
     bottom = _validate_unit(margin_bottom) if margin_bottom else base.bottom
@@ -197,7 +205,9 @@ class Heading:
     anchor: str
 
 
-def render_markdown_with_headings(md: MarkdownIt, text: str, used: Dict[str, int]) -> Tuple[str, List[Heading]]:
+def render_markdown_with_headings(
+    md: MarkdownIt, text: str, used: Dict[str, int]
+) -> Tuple[str, List[Heading]]:
     """Render markdown to HTML while injecting unique heading anchors and returning headings.
 
     Modifies token tree to add id attributes for heading_open tokens.
@@ -207,12 +217,16 @@ def render_markdown_with_headings(md: MarkdownIt, text: str, used: Dict[str, int
     i = 0
     while i < len(tokens):
         t = tokens[i]
-        if t.type == "heading_open" and i + 1 < len(tokens) and tokens[i + 1].type == "inline":
+        if (
+            t.type == "heading_open"
+            and i + 1 < len(tokens)
+            and tokens[i + 1].type == "inline"
+        ):
             level = int(t.tag[1:]) if t.tag.startswith("h") else 1
             content = tokens[i + 1].content
             base = slugify(content)
             n = used.get(base, 0)
-            anchor = base if n == 0 else f"{base}-{n+1}"
+            anchor = base if n == 0 else f"{base}-{n + 1}"
             used[base] = n + 1
             # attach id attr robustly across markdown-it-py versions
             try:
@@ -258,7 +272,7 @@ def build_toc_html(headings: Sequence[Heading], max_depth: int = 3) -> str:
             continue
         level = h.level
         if prev_level == 0:
-            items.append("<ul class=\"toc\">")
+            items.append('<ul class="toc">')
         elif level > prev_level:
             items.append("<ul>")
         elif level < prev_level:
@@ -266,7 +280,7 @@ def build_toc_html(headings: Sequence[Heading], max_depth: int = 3) -> str:
                 items.append("</li></ul>")
         else:
             items.append("</li>")
-        items.append(f"<li><a href=\"#{h.anchor}\">{escape(h.text)}</a>")
+        items.append(f'<li><a href="#{h.anchor}">{escape(h.text)}</a>')
         prev_level = level
     # close remaining lists
     if prev_level:
@@ -312,16 +326,26 @@ def default_title_template() -> Template:
     return env.from_string(tpl)
 
 
-def render_title_page(fields: TitleFields, template_path: Optional[Path] = None) -> str:
+def render_title_page(
+    fields: TitleFields, template_path: Optional[Path] = None
+) -> str:
     if template_path:
-        env = Environment(loader=FileSystemLoader(str(template_path.parent)), autoescape=True)
+        env = Environment(
+            loader=FileSystemLoader(str(template_path.parent)), autoescape=True
+        )
         tpl = env.get_template(template_path.name)
     else:
         tpl = default_title_template()
-    return tpl.render(title=fields.title, subtitle=fields.subtitle, author=fields.author, date_str=fields.date_str)
+    return tpl.render(
+        title=fields.title,
+        subtitle=fields.subtitle,
+        author=fields.author,
+        date_str=fields.date_str,
+    )
 
 
 # ------------- AI title -------------
+
 
 def generate_ai_title_fields(
     *,
@@ -357,7 +381,10 @@ def generate_ai_title_fields(
     try:
         resp = client.chat.completions.create(
             model=model,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
             max_tokens=max_tokens,
             temperature=temperature,
         )
@@ -384,6 +411,7 @@ def generate_ai_title_fields(
 
 
 # ------------- Assembly and WeasyPrint output -------------
+
 
 def load_default_css_path() -> Optional[Path]:
     # default CSS next to this module under resources/print.css
@@ -417,9 +445,15 @@ def assemble_html(
 
     default_css_path = load_default_css_path()
     default_css_link = (
-        f"<link rel=\"stylesheet\" href=\"{default_css_path.as_posix()}\">" if default_css_path else ""
+        f'<link rel="stylesheet" href="{default_css_path.as_posix()}">'
+        if default_css_path
+        else ""
     )
-    custom_css_link = f"<link rel=\"stylesheet\" href=\"{escape(custom_css_href)}\">" if custom_css_href else ""
+    custom_css_link = (
+        f'<link rel="stylesheet" href="{escape(custom_css_href)}">'
+        if custom_css_href
+        else ""
+    )
 
     # Construct body with optional title and TOC
     body_parts: List[str] = []
@@ -433,15 +467,19 @@ def assemble_html(
         # For simplicity, users get a section list.
         toc_items = [f"<li>{escape(title)}</li>" for title, _ in parts if title]
         if toc_items:
-            body_parts.append("<nav class=\"toc-root\"><h2>Table of Contents</h2><ul>" + "".join(toc_items) + "</ul></nav>")
-            body_parts.append("<div style=\"page-break-after: always;\"></div>")
+            body_parts.append(
+                '<nav class="toc-root"><h2>Table of Contents</h2><ul>'
+                + "".join(toc_items)
+                + "</ul></nav>"
+            )
+            body_parts.append('<div style="page-break-after: always;"></div>')
 
     for idx, (title, html) in enumerate(parts):
         if title:
             body_parts.append(f"<h1>{escape(title)}</h1>")
         body_parts.append(html)
         if idx < len(parts) - 1:
-            body_parts.append("<div style=\"page-break-after: always;\"></div>")
+            body_parts.append('<div style="page-break-after: always;"></div>')
 
     doc = f"""
     <!DOCTYPE html>
@@ -477,12 +515,24 @@ def build_markdown_it(extensions: Sequence[str]) -> MarkdownIt:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
-    p = argparse.ArgumentParser(description="Convert Markdown files to a single PDF (WeasyPrint)")
+    p = argparse.ArgumentParser(
+        description="Convert Markdown files to a single PDF (WeasyPrint)"
+    )
     p.add_argument("OUTPUT", help="Output PDF path")
-    p.add_argument("INPUTS", nargs="+", help="Markdown files and/or directories")
-    p.add_argument("--paper-size", choices=sorted(PAPER_SIZES.keys()), default="letter")
-    p.add_argument("--orientation", choices=["portrait", "landscape"], default="portrait")
-    p.add_argument("--margin", dest="margin", help="CSS margin shorthand (e.g., '1in' or '1in 0.5in')")
+    p.add_argument(
+        "INPUTS", nargs="+", help="Markdown files and/or directories"
+    )
+    p.add_argument(
+        "--paper-size", choices=sorted(PAPER_SIZES.keys()), default="letter"
+    )
+    p.add_argument(
+        "--orientation", choices=["portrait", "landscape"], default="portrait"
+    )
+    p.add_argument(
+        "--margin",
+        dest="margin",
+        help="CSS margin shorthand (e.g., '1in' or '1in 0.5in')",
+    )
     p.add_argument("--margin-top")
     p.add_argument("--margin-right")
     p.add_argument("--margin-bottom")
@@ -506,7 +556,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     p.add_argument("--resources", help="Base path for images/assets")
     p.add_argument("--extensions", nargs="*", default=[])
     p.add_argument("--level-limit", type=int, default=0)
-    p.add_argument("--sort", default="name", help="Sort by name|created|modified with optional '-' for desc")
+    p.add_argument(
+        "--sort",
+        default="name",
+        help="Sort by name|created|modified with optional '-' for desc",
+    )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--verbose", action="store_true")
 
@@ -514,7 +568,13 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     out_path = Path(args.OUTPUT).expanduser().resolve()
     input_paths = [Path(s) for s in args.INPUTS]
-    files = list(iter_markdown_files(input_paths, extensions=("md", "markdown"), level_limit=args.level_limit))
+    files = list(
+        iter_markdown_files(
+            input_paths,
+            extensions=("md", "markdown"),
+            level_limit=args.level_limit,
+        )
+    )
     files = sort_files(files, args.sort)
     if not files:
         raise SystemExit("No markdown files found in inputs")
@@ -572,7 +632,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 author=fields.author or ai_fields.author,
                 date_str=fields.date_str or ai_fields.date_str,
             )
-        tpl_path = Path(args.title_template).expanduser().resolve() if args.title_template else None
+        tpl_path = (
+            Path(args.title_template).expanduser().resolve()
+            if args.title_template
+            else None
+        )
         title_html = render_title_page(fields, tpl_path)
 
     # Dry run output
@@ -584,7 +648,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             print(f"  - {f}")
         print(f"- Paper: {args.paper_size} {args.orientation}")
         print(f"- TOC: {'on' if args.toc else 'off'} (depth {args.toc_depth})")
-        print(f"- Title page: {'on' if args.title_page else 'off'}{' + AI' if args.title_page and args.ai_title else ''}")
+        print(
+            f"- Title page: {'on' if args.title_page else 'off'}{' + AI' if args.title_page and args.ai_title else ''}"
+        )
         return
 
     # Build HTML doc
@@ -605,13 +671,21 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             "WeasyPrint is required. Install system libraries (Cairo, Pango) and the 'weasyprint' package."
         )
 
-    base_url = Path(args.resources).expanduser().resolve().as_uri() if args.resources else Path.cwd().as_uri()
+    base_url = (
+        Path(args.resources).expanduser().resolve().as_uri()
+        if args.resources
+        else Path.cwd().as_uri()
+    )
     stylesheets = [CSS(string=page_css)]
     if args.css:
-        stylesheets.append(CSS(filename=str(Path(args.css).expanduser().resolve())))
+        stylesheets.append(
+            CSS(filename=str(Path(args.css).expanduser().resolve()))
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    HTML(string=html_doc, base_url=base_url).write_pdf(target=str(out_path), stylesheets=stylesheets)
+    HTML(string=html_doc, base_url=base_url).write_pdf(
+        target=str(out_path), stylesheets=stylesheets
+    )
     if args.verbose:
         print(f"Wrote PDF to {out_path}")
 

@@ -93,7 +93,9 @@ def find_config_path(arg: Optional[str]) -> Path:
     bundled = Path(__file__).resolve().parent / "documents.toml"
     if bundled.exists():
         return bundled
-    raise FileNotFoundError("documents.toml not found (checked CWD and study_utils/)")
+    raise FileNotFoundError(
+        "documents.toml not found (checked CWD and study_utils/)"
+    )
 
 
 def load_documents_config(path: Path) -> Dict[str, Dict[str, str]]:
@@ -129,12 +131,16 @@ def load_documents_config(path: Path) -> Dict[str, Dict[str, str]]:
         entry = {
             "prompt": prompt.strip(),
             "description": str(v.get("description", "")).strip(),
-            "model": str(v.get("model", os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini"))).strip(),
+            "model": str(
+                v.get("model", os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini"))
+            ).strip(),
         }
         data[str(k).strip()] = entry
 
     if not data:
-        raise ValueError("documents.toml does not contain any valid document types")
+        raise ValueError(
+            "documents.toml does not contain any valid document types"
+        )
     return data
 
 
@@ -150,17 +156,23 @@ def build_reference_block(files: Sequence[Tuple[Path, str]]) -> str:
     """
     parts: List[str] = []
     for p, content in files:
-        parts.append("\n".join([
-            "\n---",
-            f"File: {p.name}",
-            f"Path: {p}",
-            "Content:",
-            content,
-        ]))
+        parts.append(
+            "\n".join(
+                [
+                    "\n---",
+                    f"File: {p.name}",
+                    f"Path: {p}",
+                    "Content:",
+                    content,
+                ]
+            )
+        )
     return "\n".join(parts)
 
 
-def build_messages(doc_cfg: Dict[str, str], files: Sequence[Tuple[Path, str]]) -> List[Dict[str, str]]:
+def build_messages(
+    doc_cfg: Dict[str, str], files: Sequence[Tuple[Path, str]]
+) -> List[Dict[str, str]]:
     """Construct chat messages for the selected document type."""
     system = (
         "You are an expert writing assistant. "
@@ -209,13 +221,17 @@ def generate_document(
     discovered = list(iter_text_files(inputs, extensions, level_limit))
     if not discovered:
         raise FileNotFoundError("No matching reference files found")
-    ref_pairs: List[Tuple[Path, str]] = [(p, read_text_file(p)) for p in discovered]
+    ref_pairs: List[Tuple[Path, str]] = [
+        (p, read_text_file(p)) for p in discovered
+    ]
 
     # Prepare AI call
     client = load_client()
     doc_cfg = cfg_all[doc_type]
     messages = build_messages(doc_cfg, ref_pairs)
-    model = doc_cfg.get("model") or os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini")
+    model = doc_cfg.get("model") or os.getenv(
+        "OPENAI_TITLE_MODEL", "gpt-4o-mini"
+    )
 
     resp = client.chat.completions.create(
         model=model,
@@ -225,7 +241,9 @@ def generate_document(
     )
     content = (resp.choices[0].message.content or "").strip()
     if not content:
-        raise RuntimeError("AI returned empty content; check API key/model and inputs")
+        raise RuntimeError(
+            "AI returned empty content; check API key/model and inputs"
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding="utf-8")
@@ -242,16 +260,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
         description="Generate a Markdown document from reference files using an AI prompt",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("DOC_TYPE", help="Document type key defined in documents.toml")
+    p.add_argument(
+        "DOC_TYPE", help="Document type key defined in documents.toml"
+    )
     p.add_argument("OUTPUT", help="Output markdown filename")
-    p.add_argument("INPUTS", nargs="+", help="Reference files and/or directories to scan")
+    p.add_argument(
+        "INPUTS", nargs="+", help="Reference files and/or directories to scan"
+    )
     p.add_argument(
         "--extensions",
         nargs="+",
         help="File extensions to include (e.g. txt md markdown). Defaults include txt, md, markdown",
     )
-    p.add_argument("--level-limit", type=int, default=0, help="Directory depth to traverse for directories")
-    p.add_argument("--config", help="Path to documents.toml. Defaults to ./documents.toml then bundled study_utils/documents.toml")
+    p.add_argument(
+        "--level-limit",
+        type=int,
+        default=0,
+        help="Directory depth to traverse for directories",
+    )
+    p.add_argument(
+        "--config",
+        help="Path to documents.toml. Defaults to ./documents.toml then bundled study_utils/documents.toml",
+    )
     return p
 
 

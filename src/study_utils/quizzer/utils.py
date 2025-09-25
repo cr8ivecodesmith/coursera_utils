@@ -38,11 +38,15 @@ def _get_quiz_section(cfg: dict, name: str) -> dict:
 def _load_toml(path: Path) -> dict:
     try:
         import tomllib  # type: ignore[attr-defined]
-    except Exception:  # pragma: no cover - fallback for <3.11 if tomli is installed
+    except (
+        Exception
+    ):  # pragma: no cover - fallback for <3.11 if tomli is installed
         try:
             import tomli as tomllib  # type: ignore
         except Exception as exc:  # pragma: no cover
-            raise RuntimeError("TOML support not available. Use Python 3.11+ or install 'tomli'.") from exc
+            raise RuntimeError(
+                "TOML support not available. Use Python 3.11+ or install 'tomli'."
+            ) from exc
     with path.open("rb") as fh:
         return tomllib.load(fh)
 
@@ -97,12 +101,18 @@ def iter_quiz_files(
         if not p.is_dir():
             continue
         if level_limit == 0:
-            files = sorted((c for c in p.rglob("*") if c.is_file()), key=lambda x: x.name.lower())
+            files = sorted(
+                (c for c in p.rglob("*") if c.is_file()),
+                key=lambda x: x.name.lower(),
+            )
             for f in files:
                 if _match(f):
                     out.append(f)
         else:
-            files = sorted((c for c in p.rglob("*") if c.is_file()), key=lambda x: x.name.lower())
+            files = sorted(
+                (c for c in p.rglob("*") if c.is_file()),
+                key=lambda x: x.name.lower(),
+            )
             for f in files:
                 try:
                     rel = f.relative_to(p)

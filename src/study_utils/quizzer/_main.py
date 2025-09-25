@@ -23,7 +23,11 @@ def _out_dir_for(name: str, cfg: Optional[dict]) -> Path:
     if cfg:
         st = cfg.get("storage") or {}
         d = st.get("out_dir") if isinstance(st, dict) else None
-    base = Path(d.replace("<name>", name)) if isinstance(d, str) else Path(".quizzer") / name
+    base = (
+        Path(d.replace("<name>", name))
+        if isinstance(d, str)
+        else Path(".quizzer") / name
+    )
     return base.resolve()
 
 
@@ -38,15 +42,15 @@ def _cmd_init(args: argparse.Namespace) -> int:
         "# Define quizzes under [quiz.<name>] sections\n\n"
         f"[quiz.{name}]\n"
         "# One or more files or directories (Markdown)\n"
-        "sources = [\"./materials\"]\n"
-        "types = [\"mcq\"]\n"
+        'sources = ["./materials"]\n'
+        'types = ["mcq"]\n'
         "per_topic = 3\n"
         "ensure_coverage = true\n\n"
         "[storage]\n"
         "# Artifacts directory; <name> will be replaced with quiz name\n"
-        "out_dir = \".quizzer/<name>\"\n\n"
+        'out_dir = ".quizzer/<name>"\n\n'
         "[ai]\n"
-        "model = \"gpt-4o-mini\"\n"
+        'model = "gpt-4o-mini"\n'
         "temperature = 0.2\n"
         "max_tokens = 600\n"
     )
@@ -71,7 +75,11 @@ def _cmd_topics_generate(args: argparse.Namespace) -> int:
         print(f"Error: [quiz.{args.name}] must define 'sources' list")
         return 2
     input_paths = [Path(s).expanduser().resolve() for s in sources]
-    files = iter_quiz_files(input_paths, extensions=args.extensions, level_limit=int(args.level_limit))
+    files = iter_quiz_files(
+        input_paths,
+        extensions=args.extensions,
+        level_limit=int(args.level_limit),
+    )
     if not files:
         print("No matching Markdown files found.")
         return 1
@@ -94,7 +102,9 @@ def _cmd_topics_list(args: argparse.Namespace) -> int:
     out_dir = _out_dir_for(args.name, cfg)
     topics_path = out_dir / "topics.jsonl"
     if not topics_path.exists():
-        print(f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'.")
+        print(
+            f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'."
+        )
         return 1
     topics = read_jsonl(topics_path)
     filt = (args.filter or "").lower().strip()
@@ -129,11 +139,21 @@ def _cmd_questions_generate(args: argparse.Namespace) -> int:
     out_dir = _out_dir_for(args.name, cfg)
     topics_path = out_dir / "topics.jsonl"
     if not topics_path.exists():
-        print(f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'.")
+        print(
+            f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'."
+        )
         return 1
     topics = read_jsonl(topics_path)
-    per_topic = int(args.per_topic) if args.per_topic is not None else int(section.get("per_topic", 3))
-    ensure_coverage = bool(args.ensure_coverage) if hasattr(args, "ensure_coverage") else bool(section.get("ensure_coverage", True))
+    per_topic = (
+        int(args.per_topic)
+        if args.per_topic is not None
+        else int(section.get("per_topic", 3))
+    )
+    ensure_coverage = (
+        bool(args.ensure_coverage)
+        if hasattr(args, "ensure_coverage")
+        else bool(section.get("ensure_coverage", True))
+    )
     client = None
     if load_client is not None:
         try:
@@ -165,7 +185,9 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
     out_dir = _out_dir_for(args.name, cfg)
     q_path = out_dir / "questions.jsonl"
     if not q_path.exists():
-        print(f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'.")
+        print(
+            f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'."
+        )
         return 1
     questions = read_jsonl(q_path)
     topics_filter = set(args.topics or [])
@@ -197,7 +219,9 @@ def _cmd_start(args: argparse.Namespace) -> int:
     out_dir = _out_dir_for(args.name, cfg)
     q_path = out_dir / "questions.jsonl"
     if not q_path.exists():
-        print(f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'.")
+        print(
+            f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'."
+        )
         return 1
     questions = read_jsonl(q_path)
     if not questions:
@@ -224,17 +248,35 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    sp_init = sub.add_parser("init", help="Create quizzer.toml template for a quiz")
+    sp_init = sub.add_parser(
+        "init", help="Create quizzer.toml template for a quiz"
+    )
     sp_init.add_argument("name")
 
     sp_topics = sub.add_parser("topics", help="Topic-related commands")
     topics_sub = sp_topics.add_subparsers(dest="action", required=True)
-    sp_t_gen = topics_sub.add_parser("generate", help="Extract and persist topics")
+    sp_t_gen = topics_sub.add_parser(
+        "generate", help="Extract and persist topics"
+    )
     sp_t_gen.add_argument("name")
     sp_t_gen.add_argument("--limit", type=int)
-    sp_t_gen.add_argument("--extensions", nargs="+", default=["md", "markdown"], help="File extensions to include for discovery")
-    sp_t_gen.add_argument("--level-limit", type=int, default=0, help="Directory depth limit (0 = no limit)")
-    sp_t_gen.add_argument("--use-ai", action="store_true", help="Use AI to assist topic extraction")
+    sp_t_gen.add_argument(
+        "--extensions",
+        nargs="+",
+        default=["md", "markdown"],
+        help="File extensions to include for discovery",
+    )
+    sp_t_gen.add_argument(
+        "--level-limit",
+        type=int,
+        default=0,
+        help="Directory depth limit (0 = no limit)",
+    )
+    sp_t_gen.add_argument(
+        "--use-ai",
+        action="store_true",
+        help="Use AI to assist topic extraction",
+    )
     sp_t_list = topics_sub.add_parser("list", help="List topics")
     sp_t_list.add_argument("name")
     sp_t_list.add_argument("--filter")
@@ -244,8 +286,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     sp_q_gen = q_sub.add_parser("generate", help="Generate questions")
     sp_q_gen.add_argument("name")
     sp_q_gen.add_argument("--per-topic", type=int)
-    sp_q_gen.add_argument("--ensure-coverage", dest="ensure_coverage", action="store_true")
-    sp_q_gen.add_argument("--no-ensure-coverage", dest="ensure_coverage", action="store_false")
+    sp_q_gen.add_argument(
+        "--ensure-coverage", dest="ensure_coverage", action="store_true"
+    )
+    sp_q_gen.add_argument(
+        "--no-ensure-coverage", dest="ensure_coverage", action="store_false"
+    )
     sp_q_gen.set_defaults(ensure_coverage=True)
     sp_q_list = q_sub.add_parser("list", help="List questions")
     sp_q_list.add_argument("name")
@@ -254,14 +300,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     sp_start = sub.add_parser("start", help="Start a quiz session")
     sp_start.add_argument("name")
     sp_start.add_argument("--num", type=int, default=10)
-    sp_start.add_argument("--mix", choices=["balanced", "random", "weakness"], default="balanced")
+    sp_start.add_argument(
+        "--mix", choices=["balanced", "random", "weakness"], default="balanced"
+    )
     sp_start.add_argument("--resume", action="store_true")
     sp_start.add_argument("--shuffle", action="store_true")
     sp_start.add_argument("--explain", dest="explain", action="store_true")
     sp_start.add_argument("--no-explain", dest="explain", action="store_false")
     sp_start.set_defaults(explain=True)
 
-    sp_rev = sub.add_parser("review", help="Re-quiz wrong or weak topics from a session")
+    sp_rev = sub.add_parser(
+        "review", help="Re-quiz wrong or weak topics from a session"
+    )
     sp_rev.add_argument("name")
     sp_rev.add_argument("--session")
     sp_rep = sub.add_parser("report", help="Show session summary")

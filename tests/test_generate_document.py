@@ -20,7 +20,9 @@ def test_load_documents_config_bundled_and_find_path():
         assert isinstance(cfg[k]["prompt"], str) and cfg[k]["prompt"].strip()
 
 
-def test_generate_document_writes_output_with_stubbed_client(tmp_path: Path, monkeypatch):
+def test_generate_document_writes_output_with_stubbed_client(
+    tmp_path: Path, monkeypatch
+):
     # Create reference files
     a = tmp_path / "a.txt"
     b = tmp_path / "b.md"
@@ -87,7 +89,9 @@ def test_generate_document_unknown_type_raises(tmp_path: Path, monkeypatch):
         raise AssertionError("Expected ValueError for unknown doc type")
 
 
-def test_generate_document_no_matching_files_raises(tmp_path: Path, monkeypatch):
+def test_generate_document_no_matching_files_raises(
+    tmp_path: Path, monkeypatch
+):
     # Directory with only .bin file
     (tmp_path / "a.bin").write_text("X")
     monkeypatch.setattr(gd, "load_client", lambda: object())

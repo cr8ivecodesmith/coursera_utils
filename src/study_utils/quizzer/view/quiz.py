@@ -7,20 +7,31 @@ from textual.widgets import Static, Button
 from textual.containers import Vertical, Container
 
 
-def aggregate_summary(responses: Sequence[Dict[str, object]]) -> Dict[str, object]:
+def aggregate_summary(
+    responses: Sequence[Dict[str, object]],
+) -> Dict[str, object]:
     total = len(responses)
     correct = sum(1 for r in responses if bool(r.get("correct")))
-    per_topic: Dict[str, Dict[str, int]] = defaultdict(lambda: {"asked": 0, "correct": 0})
+    per_topic: Dict[str, Dict[str, int]] = defaultdict(
+        lambda: {"asked": 0, "correct": 0}
+    )
     for r in responses:
         t = str(r.get("topic_id", ""))
         per_topic[t]["asked"] += 1
         if r.get("correct"):
             per_topic[t]["correct"] += 1
     accuracy = (correct / total) if total else 0.0
-    return {"total": total, "correct": correct, "accuracy": accuracy, "per_topic": dict(per_topic)}
+    return {
+        "total": total,
+        "correct": correct,
+        "accuracy": accuracy,
+        "per_topic": dict(per_topic),
+    }
 
 
-def summarize_results(questions: Sequence[Dict[str, object]], selected: Dict[str, str]) -> List[Dict[str, object]]:
+def summarize_results(
+    questions: Sequence[Dict[str, object]], selected: Dict[str, str]
+) -> List[Dict[str, object]]:
     """Summarize results comparing selected answers to correct answers.
 
     Returns a list with one entry per question with fields:
@@ -34,25 +45,29 @@ def summarize_results(questions: Sequence[Dict[str, object]], selected: Dict[str
         if not q:
             continue
         ans = str(q.get("answer", "")).strip().upper()
-        items.append({
-            "id": str(qid),
-            "stem": q.get("stem", ""),
-            "selected": str(choice).strip().upper(),
-            "answer": ans,
-            "correct": str(choice).strip().upper() == ans,
-        })
+        items.append(
+            {
+                "id": str(qid),
+                "stem": q.get("stem", ""),
+                "selected": str(choice).strip().upper(),
+                "answer": ans,
+                "correct": str(choice).strip().upper() == ans,
+            }
+        )
     # Then unanswered
     for q in questions:
         qid = str(q.get("id"))
         if qid in selected:
             continue
-        items.append({
-            "id": qid,
-            "stem": q.get("stem", ""),
-            "selected": None,
-            "answer": str(q.get("answer", "")).strip().upper(),
-            "correct": False,
-        })
+        items.append(
+            {
+                "id": qid,
+                "stem": q.get("stem", ""),
+                "selected": None,
+                "answer": str(q.get("answer", "")).strip().upper(),
+                "correct": False,
+            }
+        )
     return items
 
 
@@ -87,7 +102,12 @@ class QuizApp(App):
             q = self._questions[self._index]
             qid = str(q.get("id", self._index))
             sel = self._selected.get(qid)
-            yield QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel)
+            yield QuestionView(
+                q,
+                index=self._index + 1,
+                total=len(self._questions),
+                selected=sel,
+            )
         with Container(id="footer"):
             yield Button("Prev", id="prev")
             yield Button("Next", id="next")
@@ -132,7 +152,14 @@ class QuizApp(App):
         q = self._questions[self._index]
         qid = str(q.get("id", self._index))
         sel = self._selected.get(qid)
-        stage.mount(QuestionView(q, index=self._index + 1, total=len(self._questions), selected=sel))
+        stage.mount(
+            QuestionView(
+                q,
+                index=self._index + 1,
+                total=len(self._questions),
+                selected=sel,
+            )
+        )
         try:
             ans = self.query_one("#answered", Static)
             ans.update(self._answered_text())
@@ -182,7 +209,9 @@ class QuizApp(App):
         total = len(getattr(self, "_summary", []))
         return (total + page_size - 1) // page_size if total else 1
 
-    def summary_items_for_page(self, page: int, page_size: int = 5) -> List[Dict[str, object]]:
+    def summary_items_for_page(
+        self, page: int, page_size: int = 5
+    ) -> List[Dict[str, object]]:
         items = list(getattr(self, "_summary", []))
         start = page * page_size
         end = start + page_size
@@ -192,7 +221,14 @@ class QuizApp(App):
 class QuestionView(Widget):
     """A simple view that renders a single MCQ with choices, progress and status."""
 
-    def __init__(self, question: Dict[str, object], index: int, total: int, *, selected: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        question: Dict[str, object],
+        index: int,
+        total: int,
+        *,
+        selected: Optional[str] = None,
+    ) -> None:
         super().__init__()
         self.question = question
         self.index = index
@@ -212,10 +248,10 @@ class QuestionView(Widget):
                     key = "?"
                     text = str(ch)
                 label = f"{key}) {text}"
-                btn = Button(label, id=f'choice-{key}')
+                btn = Button(label, id=f"choice-{key}")
                 if self.selected and key == self.selected:
                     try:
-                        btn.add_class('selected')
+                        btn.add_class("selected")
                     except Exception:
                         pass
                 yield btn
@@ -235,4 +271,8 @@ class QuestionView(Widget):
 
     def feedback_text(self, key: str) -> str:
         ok, expl = self.compute_correct(key)
-        return "Correct." if ok else (f"Incorrect. {expl}" if expl else "Incorrect.")
+        return (
+            "Correct."
+            if ok
+            else (f"Incorrect. {expl}" if expl else "Incorrect.")
+        )

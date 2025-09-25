@@ -27,8 +27,11 @@ class _FakeClient:
                     class _Choice:
                         class _Msg:
                             content = json.dumps(payload)
+
                         message = _Msg()
+
                     choices = [_Choice()]
+
                 return _Resp()
 
 
@@ -56,6 +59,7 @@ def test_generate_questions_aggregates_by_topic():
     res = qz.generate_questions(topics, per_topic=2, client=_FakeClient())
     assert len(res) == 4
     from collections import Counter
+
     c = Counter(q["topic_id"] for q in res)
     assert c["intro"] == 2 and c["basics"] == 2
 
@@ -74,5 +78,7 @@ def test_generate_questions_passes_context(tmp_path):
     _ = qz.generate_questions(topics, per_topic=1, client=_FakeClient())
     # Ensure the captured messages include our token in the user content
     msgs = getattr(_FakeClient, "last_messages", []) or []
-    user_contents = "\n\n".join(m.get("content", "") for m in msgs if m.get("role") == "user")
+    user_contents = "\n\n".join(
+        m.get("content", "") for m in msgs if m.get("role") == "user"
+    )
     assert token in user_contents

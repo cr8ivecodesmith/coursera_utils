@@ -12,6 +12,8 @@ from .manager.quiz import (
     ai_generate_mcqs_for_topic,
 )
 from .view.quiz import (
-    summarize_results, aggregate_summary,
-    QuizApp, QuestionView,
+    summarize_results,
+    aggregate_summary,
+    QuizApp,
+    QuestionView,
 )

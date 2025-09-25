@@ -4,9 +4,9 @@ import study_utils.transcribe_video as tv
 
 
 def test_save_and_load_cache_v2_roundtrip(tmp_path):
-    cache = tmp_path / '.transcribe_video_names.json'
+    cache = tmp_path / ".transcribe_video_names.json"
     root = tmp_path
-    video = tmp_path / 'a.mp4'
+    video = tmp_path / "a.mp4"
     video.touch()
     mapping = {video: {"base": "Base A", "final": "P01-Base A.txt"}}
     tv.save_names_cache(cache, root, mapping, meta={"use_ai": False})
@@ -22,16 +22,20 @@ def test_save_and_load_cache_v2_roundtrip(tmp_path):
 
 
 def test_upgrade_from_v1_and_save(tmp_path):
-    cache = tmp_path / '.transcribe_video_names.json'
+    cache = tmp_path / ".transcribe_video_names.json"
     root = tmp_path
-    video = tmp_path / 'b.mp4'
+    video = tmp_path / "b.mp4"
     video.touch()
     # Old v1 format: names map to plain strings (base only)
-    cache.write_text(json.dumps({
-        "version": 1,
-        "root": str(root),
-        "names": {str(video): "Old Base Name"}
-    }))
+    cache.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "root": str(root),
+                "names": {str(video): "Old Base Name"},
+            }
+        )
+    )
 
     loaded = tv.load_names_cache(cache)
     # v1 returns plain string entries

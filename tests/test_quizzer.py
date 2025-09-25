@@ -16,12 +16,18 @@ def test_iter_quiz_files_discovers_markdown(tmp_path: Path):
     from study_utils import quizzer as qz
 
     # level_limit=1 should not include b/c/deep.md when starting at b
-    files = qz.iter_quiz_files([tmp_path / "a", tmp_path / "b"], extensions=("md", "markdown"), level_limit=1)
+    files = qz.iter_quiz_files(
+        [tmp_path / "a", tmp_path / "b"],
+        extensions=("md", "markdown"),
+        level_limit=1,
+    )
     rel = sorted([p.relative_to(tmp_path).as_posix() for p in files])
     assert rel == ["a/x.md", "a/y.markdown"]
 
     # Unlimited depth will include all
-    files2 = qz.iter_quiz_files([tmp_path], extensions=("md", "markdown"), level_limit=0)
+    files2 = qz.iter_quiz_files(
+        [tmp_path], extensions=("md", "markdown"), level_limit=0
+    )
     rel2 = sorted([p.relative_to(tmp_path).as_posix() for p in files2])
     assert rel2 == ["a/x.md", "a/y.markdown", "b/c/deep.md"]
 
@@ -71,7 +77,9 @@ def test_validate_mcq_happy_and_errors():
     # Should not raise
     try:
         qz.validate_mcq(ok)
-    except Exception as e:  # pragma: no cover - this should not happen once implemented
+    except (
+        Exception
+    ) as e:  # pragma: no cover - this should not happen once implemented
         pytest.fail(f"validate_mcq raised unexpectedly: {e}")
 
     bad_dup_keys = {
@@ -85,7 +93,10 @@ def test_validate_mcq_happy_and_errors():
     bad_multi_answers = {**ok, "answer": ["A", "B"]}
     with pytest.raises(ValueError) as e2:
         qz.validate_mcq(bad_multi_answers)
-    assert "single" in str(e2.value).lower() or "exactly one" in str(e2.value).lower()
+    assert (
+        "single" in str(e2.value).lower()
+        or "exactly one" in str(e2.value).lower()
+    )
 
     missing_answer = {**ok}
     missing_answer.pop("answer")
@@ -114,8 +125,12 @@ def _mk_q(topic: str, idx: int) -> dict:
 def test_select_questions_balanced_and_seed():
     from study_utils import quizzer as qz
 
-    bank = [_mk_q("t1", i) for i in range(3)] + [_mk_q("t2", i) for i in range(3)]
-    selected = qz.select_questions(bank, strategy="balanced", num=4, per_topic_stats=None, seed=42)
+    bank = [_mk_q("t1", i) for i in range(3)] + [
+        _mk_q("t2", i) for i in range(3)
+    ]
+    selected = qz.select_questions(
+        bank, strategy="balanced", num=4, per_topic_stats=None, seed=42
+    )
     # First two should cover both topics before repeating
     seen = [q["topic_id"] for q in selected[:2]]
     assert set(seen) == {"t1", "t2"}
@@ -129,9 +144,16 @@ def test_select_questions_balanced_and_seed():
 def test_select_questions_weakness_weighting():
     from study_utils import quizzer as qz
 
-    bank = [_mk_q("t1", i) for i in range(10)] + [_mk_q("t2", i) for i in range(10)]
-    stats = {"t1": {"asked": 10, "correct": 9}, "t2": {"asked": 10, "correct": 2}}
-    sel = qz.select_questions(bank, strategy="weakness", num=10, per_topic_stats=stats, seed=7)
+    bank = [_mk_q("t1", i) for i in range(10)] + [
+        _mk_q("t2", i) for i in range(10)
+    ]
+    stats = {
+        "t1": {"asked": 10, "correct": 9},
+        "t2": {"asked": 10, "correct": 2},
+    }
+    sel = qz.select_questions(
+        bank, strategy="weakness", num=10, per_topic_stats=stats, seed=7
+    )
     # Expect t2 to appear more often than t1
     from collections import Counter
 
@@ -143,9 +165,27 @@ def test_aggregate_summary():
     from study_utils import quizzer as qz
 
     resp = [
-        {"question_id": "t1-1", "topic_id": "t1", "given": "A", "correct": True, "duration_sec": 3.0},
-        {"question_id": "t1-2", "topic_id": "t1", "given": "B", "correct": False, "duration_sec": 4.0},
-        {"question_id": "t2-1", "topic_id": "t2", "given": "A", "correct": True, "duration_sec": 2.0},
+        {
+            "question_id": "t1-1",
+            "topic_id": "t1",
+            "given": "A",
+            "correct": True,
+            "duration_sec": 3.0,
+        },
+        {
+            "question_id": "t1-2",
+            "topic_id": "t1",
+            "given": "B",
+            "correct": False,
+            "duration_sec": 4.0,
+        },
+        {
+            "question_id": "t2-1",
+            "topic_id": "t2",
+            "given": "A",
+            "correct": True,
+            "duration_sec": 2.0,
+        },
     ]
     summary = qz.aggregate_summary(resp)
     assert summary["total"] == 3
@@ -159,8 +199,20 @@ def test_jsonl_round_trip(tmp_path: Path):
     from study_utils import quizzer as qz
 
     topics = [
-        {"id": "intro", "name": "Intro", "description": "...", "source_paths": ["/x"], "created_at": "2020-01-01T00:00:00Z"},
-        {"id": "basics", "name": "Basics", "description": "...", "source_paths": ["/y"], "created_at": "2020-01-01T00:00:00Z"},
+        {
+            "id": "intro",
+            "name": "Intro",
+            "description": "...",
+            "source_paths": ["/x"],
+            "created_at": "2020-01-01T00:00:00Z",
+        },
+        {
+            "id": "basics",
+            "name": "Basics",
+            "description": "...",
+            "source_paths": ["/y"],
+            "created_at": "2020-01-01T00:00:00Z",
+        },
     ]
     p = tmp_path / "topics.jsonl"
     qz.write_jsonl(p, topics)
@@ -177,7 +229,14 @@ def test_cli_parse_subcommands():
     assert ns.command == "init" and ns.name == "myquiz"
 
     ns = parser.parse_args(["topics", "generate", "myquiz", "--limit", "5"])
-    assert ns.command == "topics" and ns.action == "generate" and ns.name == "myquiz" and ns.limit == 5
+    assert (
+        ns.command == "topics"
+        and ns.action == "generate"
+        and ns.name == "myquiz"
+        and ns.limit == 5
+    )
 
-    ns = parser.parse_args(["start", "myquiz", "--num", "10", "--mix", "balanced"])
+    ns = parser.parse_args(
+        ["start", "myquiz", "--num", "10", "--mix", "balanced"]
+    )
     assert ns.command == "start" and ns.num == 10 and ns.mix == "balanced"

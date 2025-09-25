@@ -44,7 +44,9 @@ def test_iter_text_files_with_level_limit_and_extensions(tmp_path: Path):
     assert set(files_lvl1) == {a}
 
     # Multiple extensions
-    files_md = list(tc.iter_text_files([tmp_path], {"txt", "md"}, level_limit=0))
+    files_md = list(
+        tc.iter_text_files([tmp_path], {"txt", "md"}, level_limit=0)
+    )
     assert set(files_md) == {a, d, e, tmp_path / "b.md"}
 
 
@@ -139,7 +141,20 @@ def test_cli_basic_combine(tmp_path: Path):
     outp = tmp_path / "combined.txt"
 
     # Order by name so result is deterministic regardless of discovery order
-    tc.main([str(outp), str(tmp_path), "--extensions", "txt", "--order-by", "name", "--combine-by", "NEW", "--level-limit", "1"])
+    tc.main(
+        [
+            str(outp),
+            str(tmp_path),
+            "--extensions",
+            "txt",
+            "--order-by",
+            "name",
+            "--combine-by",
+            "NEW",
+            "--level-limit",
+            "1",
+        ]
+    )
 
     assert outp.exists()
     # a then b due to name ordering and newline separator

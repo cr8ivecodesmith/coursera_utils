@@ -68,7 +68,11 @@ def find_video_files(target: Path, recursive: bool = False) -> List[Path]:
     if recursive:
         return sorted([p for p in target.rglob("*.mp4") if p.is_file()])
     else:
-        files = [p for p in sorted(target.iterdir()) if p.is_file() and p.suffix.lower() == ".mp4"]
+        files = [
+            p
+            for p in sorted(target.iterdir())
+            if p.is_file() and p.suffix.lower() == ".mp4"
+        ]
         return files
 
 
@@ -102,7 +106,12 @@ def load_names_cache(cache_path: Path) -> Dict[str, Any]:
     return {}
 
 
-def save_names_cache(cache_path: Path, root: Path, names: Dict[Path, Any], meta: Optional[Dict] = None) -> None:
+def save_names_cache(
+    cache_path: Path,
+    root: Path,
+    names: Dict[Path, Any],
+    meta: Optional[Dict] = None,
+) -> None:
     """Save cache; accepts values as either strings (base) or dict entries.
 
     When value is a string, it's treated as the base smart name. When it's a dict,
@@ -176,7 +185,9 @@ def heuristic_smart_name(video_path: Path, root: Path) -> str:
     return base[:120] if len(base) > 120 else base
 
 
-def ai_smart_name(client: OpenAI, video_path: Path, root: Path) -> Optional[str]:
+def ai_smart_name(
+    client: OpenAI, video_path: Path, root: Path
+) -> Optional[str]:
     """Attempt to generate a concise descriptive name using OpenAI.
 
     Falls back to None on any error.
@@ -194,7 +205,10 @@ def ai_smart_name(client: OpenAI, video_path: Path, root: Path) -> Optional[str]
         resp = client.chat.completions.create(
             model=os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini"),
             messages=[
-                {"role": "system", "content": "You create concise, file-name-safe titles."},
+                {
+                    "role": "system",
+                    "content": "You create concise, file-name-safe titles.",
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
@@ -241,7 +255,9 @@ def build_name_mapping(
     return mapping
 
 
-def split_video_to_audio_segments(file_path: Path, exist_delete: bool = True) -> List[Path]:
+def split_video_to_audio_segments(
+    file_path: Path, exist_delete: bool = True
+) -> List[Path]:
     """Extract audio from an mp4 and split into ~10 minute mp3 segments.
 
     Returns a list of mp3 segment file paths. Creates a transient directory
@@ -261,7 +277,9 @@ def split_video_to_audio_segments(file_path: Path, exist_delete: bool = True) ->
 
     segment_files: List[Path] = []
     for idx, chunk in enumerate(chunks):
-        audio_chunk = chunk_dir.joinpath(f"{file_path.stem}_segment_{idx:02d}.mp3")
+        audio_chunk = chunk_dir.joinpath(
+            f"{file_path.stem}_segment_{idx:02d}.mp3"
+        )
         chunk.export(audio_chunk, format="mp3")
         segment_files.append(audio_chunk)
 
@@ -276,7 +294,9 @@ def transcribe_audio_file(client: OpenAI, audio_path: Path) -> str:
         response_format="text",
     )
     # SDK returns a plain string when response_format='text'
-    return response.strip() if isinstance(response, str) else str(response).strip()
+    return (
+        response.strip() if isinstance(response, str) else str(response).strip()
+    )
 
 
 def transcribe_video_file(client: OpenAI, video_path: Path) -> str:
@@ -310,7 +330,9 @@ def sanitize_filename(name: str) -> str:
 
 
 def _strip_outer_quotes(s: str) -> str:
-    if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
+    if (s.startswith("'") and s.endswith("'")) or (
+        s.startswith('"') and s.endswith('"')
+    ):
         return s[1:-1]
     return s
 
@@ -382,9 +404,19 @@ def make_output_filename(
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Transcribe mp4 video(s) using Whisper-1")
-    parser.add_argument("TARGET", help="Path to an .mp4 file or a directory containing .mp4 files")
-    parser.add_argument("-o", "--output-dir", dest="output_dir", help="Directory to write transcripts (default: cwd)")
+    parser = argparse.ArgumentParser(
+        description="Transcribe mp4 video(s) using Whisper-1"
+    )
+    parser.add_argument(
+        "TARGET",
+        help="Path to an .mp4 file or a directory containing .mp4 files",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        dest="output_dir",
+        help="Directory to write transcripts (default: cwd)",
+    )
     parser.add_argument(
         "-p",
         "--prefix",
@@ -397,12 +429,43 @@ def main():
             "(Note: legacy sep:VALUE is accepted and treated as text:VALUE)."
         ),
     )
-    parser.add_argument("-l", "--list", dest="list_only", action="store_true", help="List discovered .mp4 files and exit")
-    parser.add_argument("-r", "--recursive", dest="recursive", action="store_true", help="Traverse subfolders of the target directory")
-    parser.add_argument("--smart-names", dest="smart_names", action="store_true", help="Generate smart output names from directory structure")
-    parser.add_argument("--use-ai", dest="use_ai", action="store_true", help="Use OpenAI to refine smart names (optional)")
-    parser.add_argument("--names-file", dest="names_file", help="Path to cache file for proposed names (defaults to a hidden file in target root)")
-    parser.add_argument("--refresh-names", dest="refresh_names", action="store_true", help="Regenerate names for discovered files (overwrites cache entries)")
+    parser.add_argument(
+        "-l",
+        "--list",
+        dest="list_only",
+        action="store_true",
+        help="List discovered .mp4 files and exit",
+    )
+    parser.add_argument(
+        "-r",
+        "--recursive",
+        dest="recursive",
+        action="store_true",
+        help="Traverse subfolders of the target directory",
+    )
+    parser.add_argument(
+        "--smart-names",
+        dest="smart_names",
+        action="store_true",
+        help="Generate smart output names from directory structure",
+    )
+    parser.add_argument(
+        "--use-ai",
+        dest="use_ai",
+        action="store_true",
+        help="Use OpenAI to refine smart names (optional)",
+    )
+    parser.add_argument(
+        "--names-file",
+        dest="names_file",
+        help="Path to cache file for proposed names (defaults to a hidden file in target root)",
+    )
+    parser.add_argument(
+        "--refresh-names",
+        dest="refresh_names",
+        action="store_true",
+        help="Regenerate names for discovered files (overwrites cache entries)",
+    )
 
     args = parser.parse_args()
 
@@ -427,14 +490,20 @@ def main():
                 else default_names_cache_path(root)
             )
             existing_raw = load_names_cache(cache_path)
-            existing: Dict[Path, Any] = {Path(k): v for k, v in existing_raw.items()}
+            existing: Dict[Path, Any] = {
+                Path(k): v for k, v in existing_raw.items()
+            }
             if args.refresh_names:
-                mapping_base = build_name_mapping(video_files, root, args.use_ai, client)
+                mapping_base = build_name_mapping(
+                    video_files, root, args.use_ai, client
+                )
             else:
                 missing = [p for p in video_files if p not in existing]
                 mapping_base = {}
                 if missing:
-                    generated = build_name_mapping(missing, root, args.use_ai, client)
+                    generated = build_name_mapping(
+                        missing, root, args.use_ai, client
+                    )
                     mapping_base.update(generated)
             # Build final names including prefix for preview and save them
             parsed_prefix = parse_prefix_parts(args.prefix)
@@ -444,14 +513,24 @@ def main():
             for i, p in enumerate(video_files, start=1):
                 base = mapping_base.get(p)
                 if base is None:
-                    base = cache_get_base(existing.get(p), p.stem) if p in existing else heuristic_smart_name(p, root)
-                final = make_output_filename(p, i, parsed_prefix, smart_base=base)
+                    base = (
+                        cache_get_base(existing.get(p), p.stem)
+                        if p in existing
+                        else heuristic_smart_name(p, root)
+                    )
+                final = make_output_filename(
+                    p, i, parsed_prefix, smart_base=base
+                )
                 combined[p] = {"base": base, "final": final}
             save_names_cache(
                 cache_path,
                 root,
                 combined,
-                meta={"use_ai": args.use_ai, "refreshed": args.refresh_names, "prefix_parts": args.prefix or []},
+                meta={
+                    "use_ai": args.use_ai,
+                    "refreshed": args.refresh_names,
+                    "prefix_parts": args.prefix or [],
+                },
             )
             print("Proposed names (saved). Edit the cache file to adjust:")
             print(f"Cache file: {cache_path}")
@@ -460,13 +539,20 @@ def main():
                 final = cache_get_final(entry)
                 if not final:
                     base = cache_get_base(entry, p.stem)
-                    final = make_output_filename(p, video_files.index(p) + 1, parsed_prefix, smart_base=base)
+                    final = make_output_filename(
+                        p,
+                        video_files.index(p) + 1,
+                        parsed_prefix,
+                        smart_base=base,
+                    )
                 print(f"{p} -> {final}")
         else:
             # No smart names: still allow prefix preview
             parsed_prefix = parse_prefix_parts(args.prefix)
             for i, p in enumerate(video_files, start=1):
-                out_name = make_output_filename(p, i, parsed_prefix, smart_base=None)
+                out_name = make_output_filename(
+                    p, i, parsed_prefix, smart_base=None
+                )
                 print(f"{p} -> {out_name}")
         return
 
@@ -474,7 +560,11 @@ def main():
         print("No .mp4 files found to transcribe.")
         raise SystemExit(1)
 
-    out_dir = Path(args.output_dir).expanduser().resolve() if args.output_dir else Path.cwd()
+    out_dir = (
+        Path(args.output_dir).expanduser().resolve()
+        if args.output_dir
+        else Path.cwd()
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     client = load_client()
@@ -484,13 +574,19 @@ def main():
     names_entries: Dict[Path, Any] = {}
     if args.smart_names:
         root = target_path if target_path.is_dir() else target_path.parent
-        cache_path = Path(args.names_file).expanduser().resolve() if args.names_file else default_names_cache_path(root)
+        cache_path = (
+            Path(args.names_file).expanduser().resolve()
+            if args.names_file
+            else default_names_cache_path(root)
+        )
         raw = load_names_cache(cache_path)
         entries = {Path(k): v for k, v in raw.items()}
         # Ensure we have entries for all files
         missing = [p for p in video_files if p not in entries]
         if missing:
-            base_fill = build_name_mapping(missing, root, args.use_ai, client if args.use_ai else None)
+            base_fill = build_name_mapping(
+                missing, root, args.use_ai, client if args.use_ai else None
+            )
             for p, b in base_fill.items():
                 entries[p] = {"base": b}
         # Compute/refresh finals for current run order using provided prefix
@@ -500,7 +596,16 @@ def main():
             final = make_output_filename(p, i, parsed_prefix, smart_base=base)
             entries[p] = {"base": base, "final": final}
         # Persist back before writing output
-        save_names_cache(cache_path, root, entries, meta={"use_ai": args.use_ai, "note": "refreshed finals before transcription", "prefix_parts": args.prefix or []})
+        save_names_cache(
+            cache_path,
+            root,
+            entries,
+            meta={
+                "use_ai": args.use_ai,
+                "note": "refreshed finals before transcription",
+                "prefix_parts": args.prefix or [],
+            },
+        )
         names_entries = entries
     for idx, video in enumerate(video_files, start=1):
         print(f"Processing: {video.name}")
@@ -512,9 +617,16 @@ def main():
 
         if args.smart_names:
             entry = names_entries.get(video, {})
-            out_name = cache_get_final(entry) or make_output_filename(video, idx, parsed_prefix, smart_base=cache_get_base(entry, video.stem))
+            out_name = cache_get_final(entry) or make_output_filename(
+                video,
+                idx,
+                parsed_prefix,
+                smart_base=cache_get_base(entry, video.stem),
+            )
         else:
-            out_name = make_output_filename(video, idx, parsed_prefix, smart_base=None)
+            out_name = make_output_filename(
+                video, idx, parsed_prefix, smart_base=None
+            )
         out_path = out_dir.joinpath(out_name)
         print(f"Saving transcript to: {out_path}")
         with out_path.open("w", encoding="utf-8") as fh:

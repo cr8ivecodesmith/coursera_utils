@@ -41,10 +41,16 @@ class CombineOptions:
     extensions: Set[str]
     level_limit: int
     combine_by: str  # "EOF" | "NEW"
-    order_by: Optional[str]  # None | created | -created | modified | -modified | name | -name
-    section_title: Optional[str]  # None | filename | smart-filename | smart-content
+    order_by: Optional[
+        str
+    ]  # None | created | -created | modified | -modified | name | -name
+    section_title: Optional[
+        str
+    ]  # None | filename | smart-filename | smart-content
     section_title_format: Optional[str]  # None | title | lower | upper
-    section_title_heading: Optional[str]  # None or markdown heading string like '#' or '##'
+    section_title_heading: Optional[
+        str
+    ]  # None or markdown heading string like '#' or '##'
 
 
 # -----------------------------
@@ -66,7 +72,7 @@ def parse_extensions(values: Optional[Sequence[str]]) -> Set[str]:
         if not isinstance(v, str):
             continue
         s = v.strip().lower()
-        if s.startswith('.'):
+        if s.startswith("."):
             s = s[1:]
         if s:
             out.add(s)
@@ -100,7 +106,9 @@ def parse_heading(value: Optional[str]) -> Optional[str]:
         return None
     v = value.strip()
     if not re.fullmatch(r"#{1,6}", v):
-        raise ValueError("--section-title-heading must be one of: #, ##, ###, ####, #####, ######")
+        raise ValueError(
+            "--section-title-heading must be one of: #, ##, ###, ####, #####, ######"
+        )
     return v
 
 
@@ -113,7 +121,9 @@ def _matches_extension(path: Path, extensions: Set[str]) -> bool:
     return path.is_file() and path.suffix.lower().lstrip(".") in extensions
 
 
-def iter_text_files(paths: Sequence[Path], extensions: Set[str], level_limit: int) -> Iterator[Path]:
+def iter_text_files(
+    paths: Sequence[Path], extensions: Set[str], level_limit: int
+) -> Iterator[Path]:
     """Yield matching files from given input paths, preserving input path order.
 
     - If a path is a file and extension matches -> yield directly
@@ -138,12 +148,18 @@ def iter_text_files(paths: Sequence[Path], extensions: Set[str], level_limit: in
 
         if level_limit == 0:
             # No limit: include all descendants
-            for f in sorted((c for c in p.rglob('*') if c.is_file()), key=lambda x: x.name.lower()):
+            for f in sorted(
+                (c for c in p.rglob("*") if c.is_file()),
+                key=lambda x: x.name.lower(),
+            ):
                 if _matches_extension(f, extensions):
                     yield f
         else:
             # Bounded depth: include files whose rel path parts length <= level_limit
-            for f in sorted((c for c in p.rglob('*') if c.is_file()), key=lambda x: x.name.lower()):
+            for f in sorted(
+                (c for c in p.rglob("*") if c.is_file()),
+                key=lambda x: x.name.lower(),
+            ):
                 try:
                     rel = f.relative_to(p)
                 except Exception:
@@ -151,7 +167,9 @@ def iter_text_files(paths: Sequence[Path], extensions: Set[str], level_limit: in
                 # Directory depth is number of directories between p and f
                 # For files, len(rel.parts) counts directories + filename
                 # We allow len(parts) <= level_limit to include up to (level_limit-1) directories
-                if len(rel.parts) <= level_limit and _matches_extension(f, extensions):
+                if len(rel.parts) <= level_limit and _matches_extension(
+                    f, extensions
+                ):
                     yield f
 
 
@@ -223,7 +241,10 @@ def _ai_title_from_filename(path: Path) -> Optional[str]:
         resp = client.chat.completions.create(
             model=os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini"),
             messages=[
-                {"role": "system", "content": "You create concise, human-friendly section titles."},
+                {
+                    "role": "system",
+                    "content": "You create concise, human-friendly section titles.",
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
@@ -258,7 +279,10 @@ def _ai_title_from_content(content: str, filename: str) -> Optional[str]:
         resp = client.chat.completions.create(
             model=os.getenv("OPENAI_TITLE_MODEL", "gpt-4o-mini"),
             messages=[
-                {"role": "system", "content": "You write concise, human-friendly section titles."},
+                {
+                    "role": "system",
+                    "content": "You write concise, human-friendly section titles.",
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
@@ -297,7 +321,10 @@ def make_section_title(
     elif k == "smart-filename":
         base = _ai_title_from_filename(file_path) or file_path.stem
     elif k == "smart-content":
-        base = _ai_title_from_content(file_content or "", file_path.name) or file_path.stem
+        base = (
+            _ai_title_from_content(file_content or "", file_path.name)
+            or file_path.stem
+        )
     else:
         # unknown -> treat as filename
         base = file_path.stem
@@ -435,7 +462,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     # Discover files
     try:
-        discovered = list(iter_text_files(input_paths, extensions, args.level_limit))
+        discovered = list(
+            iter_text_files(input_paths, extensions, args.level_limit)
+        )
     except Exception as exc:
         print(f"Error: {exc}")
         raise SystemExit(2)
