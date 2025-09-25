@@ -265,7 +265,6 @@ def build_toc_html(headings: Sequence[Heading], max_depth: int = 3) -> str:
         return ""
     # Simple nested list by heading levels up to max_depth
     items: List[str] = []
-    stack: List[int] = []
     prev_level = 0
     for h in headings:
         if h.level > max_depth:
