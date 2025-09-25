@@ -65,3 +65,23 @@ dev-dependencies = [
   "pytest-cov",
   "ruff",
 ]
+
+[tool.ruff]
+line-length = 80
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "N", "W", "C90"]
+ignore = []
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 80
+max-doc-length = 120
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.pytest.ini_options]
+addopts = "-q -n auto --cov=study_utils --cov-report=term-missing --maxfail=1"
+testpaths = ["tests"]
+

@@ -5,11 +5,8 @@ import pytest
 from study_utils.markdown_to_pdf import (
     build_markdown_it,
     build_page_css,
-    default_title_template,
     iter_markdown_files,
-    parse_margin_shorthand,
     render_markdown_with_headings,
-    slugify,
     TitleFields,
     render_title_page,
 )

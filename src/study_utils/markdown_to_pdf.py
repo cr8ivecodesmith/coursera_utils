@@ -13,13 +13,12 @@ Design:
 from __future__ import annotations
 
 import argparse
-import os
 import re
 from dataclasses import dataclass
 from datetime import date
 from html import escape
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 from jinja2 import Environment, FileSystemLoader, Template
 from markdown_it import MarkdownIt
@@ -601,7 +600,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     # Render PDF using WeasyPrint
     try:
         from weasyprint import HTML, CSS
-    except Exception as exc:
+    except Exception:
         raise SystemExit(
             "WeasyPrint is required. Install system libraries (Cairo, Pango) and the 'weasyprint' package."
         )

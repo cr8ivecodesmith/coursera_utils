@@ -1,5 +1,4 @@
 import json
-import pytest
 
 
 class _FakeClient:

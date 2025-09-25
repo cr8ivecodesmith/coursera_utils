@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import study_utils.transcribe_video as tv
 

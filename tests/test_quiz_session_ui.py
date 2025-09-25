@@ -1,5 +1,4 @@
 from study_utils import quizzer as qz
-from textual.widgets import Button, Static
 
 
 def test_question_view_feedback_text():

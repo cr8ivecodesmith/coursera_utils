@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import types
 
 import study_utils.generate_document as gd
 

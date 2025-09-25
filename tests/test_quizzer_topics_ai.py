@@ -1,5 +1,4 @@
 from pathlib import Path
-import pytest
 
 
 def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):

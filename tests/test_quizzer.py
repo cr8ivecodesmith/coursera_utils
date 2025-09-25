@@ -1,7 +1,5 @@
-import json
 from pathlib import Path
 import argparse
-import random
 import pytest
 
 
@@ -175,11 +173,11 @@ def test_cli_parse_subcommands():
 
     parser: argparse.ArgumentParser = qz.build_arg_parser()
 
-    ns = parser.parse_args(["init", "myquiz"]) 
+    ns = parser.parse_args(["init", "myquiz"])
     assert ns.command == "init" and ns.name == "myquiz"
 
-    ns = parser.parse_args(["topics", "generate", "myquiz", "--limit", "5"]) 
+    ns = parser.parse_args(["topics", "generate", "myquiz", "--limit", "5"])
     assert ns.command == "topics" and ns.action == "generate" and ns.name == "myquiz" and ns.limit == 5
 
-    ns = parser.parse_args(["start", "myquiz", "--num", "10", "--mix", "balanced"]) 
+    ns = parser.parse_args(["start", "myquiz", "--num", "10", "--mix", "balanced"])
     assert ns.command == "start" and ns.num == 10 and ns.mix == "balanced"

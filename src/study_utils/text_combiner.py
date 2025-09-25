@@ -18,7 +18,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Sequence, Set, Tuple
+from typing import Iterator, List, Optional, Sequence, Set
 
 
 # We reuse load_client from sibling transcribe_video to avoid duplicating env handling
