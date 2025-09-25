@@ -1,8 +1,0 @@
-pytest
-flake8
-pep8-naming
-coverage
-pytest-xdist
-pytest-cov
-ruff
-black
