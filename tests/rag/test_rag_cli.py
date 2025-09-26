@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import types
 from pathlib import Path
 
@@ -10,11 +11,30 @@ from study_utils import cli as root_cli
 from study_utils.rag import cli as rag_cli
 from study_utils.rag import config as config_mod
 from study_utils.rag import vector_store
+from study_utils.rag import chat as chat_mod
 
 
 class CLIStubEmbedder:
     def embed_documents(self, texts):
         return [[float(len(text)), 0.0] for text in texts]
+
+
+class CLIStubChatClient:
+    def __init__(self):
+        self.calls = []
+
+    def complete(
+        self,
+        *,
+        model,
+        messages,
+        temperature,
+        max_tokens,
+        stream,
+        timeout,
+    ) -> str:
+        self.calls.append([dict(item) for item in messages])
+        return "CLI stub response"
 
 
 @pytest.fixture()
@@ -395,3 +415,236 @@ def test_build_embedder_creates_adapter(tmp_path, monkeypatch):
     adapter = rag_cli._build_embedder(cfg)
     assert isinstance(adapter, DummyAdapter)
     assert created["model"] == cfg.providers.openai.embedding_model
+
+
+def test_print_chat_answer_handles_no_context(capsys):
+    answer = chat_mod.ChatAnswer(
+        session_id="s",
+        prompt="p",
+        response="No context",
+        contexts=[],
+    )
+    rag_cli._print_chat_answer(answer)
+    output = capsys.readouterr().out
+    assert "No retrieval context" in output
+
+
+def test_chat_command_question(tmp_path, rag_cli_env, monkeypatch, capsys):
+    source = tmp_path / "doc.txt"
+    source.write_text("sample text", encoding="utf-8")
+    assert rag_cli.main(["ingest", "--name", "physics", str(source)]) == 0
+    capsys.readouterr()
+
+    stub_client = CLIStubChatClient()
+    monkeypatch.setattr(rag_cli, "_build_chat_client", lambda cfg: stub_client)
+
+    exit_code = rag_cli.main(
+        ["chat", "--db", "physics", "--question", "Explain this?"]
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "CLI stub response" in output
+    sessions_dir = rag_cli_env / "rag_sessions"
+    assert any(sessions_dir.iterdir())
+
+
+def test_chat_command_resume_merges_new_db(
+    tmp_path, rag_cli_env, monkeypatch, capsys
+):
+    src1 = tmp_path / "doc1.txt"
+    src1.write_text("first", encoding="utf-8")
+    src2 = tmp_path / "doc2.txt"
+    src2.write_text("second", encoding="utf-8")
+
+    assert rag_cli.main(["ingest", "--name", "physics", str(src1)]) == 0
+    assert rag_cli.main(["ingest", "--name", "algebra", str(src2)]) == 0
+    capsys.readouterr()
+
+    stub_client = CLIStubChatClient()
+    monkeypatch.setattr(rag_cli, "_build_chat_client", lambda cfg: stub_client)
+
+    assert (
+        rag_cli.main(["chat", "--db", "physics", "--question", "First?"]) == 0
+    )
+    capsys.readouterr()
+
+    sessions_dir = rag_cli_env / "rag_sessions"
+    session_dirs = sorted(sessions_dir.iterdir())
+    assert session_dirs
+    session_id = session_dirs[0].name
+
+    assert (
+        rag_cli.main(
+            [
+                "chat",
+                "--resume",
+                session_id,
+                "--db",
+                "algebra",
+                "--question",
+                "Second?",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert "CLI stub response" in output
+    payload = json.loads((session_dirs[0] / "session.json").read_text())
+    assert sorted(payload["vector_dbs"]) == ["algebra", "physics"]
+
+
+def test_chat_command_requires_db(monkeypatch, capsys, rag_cli_env):
+    stub_client = CLIStubChatClient()
+    monkeypatch.setattr(rag_cli, "_build_chat_client", lambda cfg: stub_client)
+    exit_code = rag_cli.main(["chat", "--question", "Hi?"])
+    assert exit_code == 2
+    err = capsys.readouterr().err
+    assert "At least one --db" in err
+
+
+def test_handle_chat_handles_config_error(monkeypatch, capsys):
+    def raise_config():  # noqa: D401
+        raise config_mod.ConfigError("bad config")
+
+    monkeypatch.setattr(config_mod, "load_config", raise_config)
+    args = argparse.Namespace(dbs=None, resume=None, question=None)
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 2
+    assert "bad config" in capsys.readouterr().err
+
+
+def _prepare_chat_environment(tmp_path, monkeypatch):
+    data_home = tmp_path / "data"
+    monkeypatch.setenv("STUDY_UTILS_DATA_HOME", str(data_home))
+    config_mod.write_template(data_home / "config" / "rag.toml")
+    return config_mod.load_config()
+
+
+def test_handle_chat_handles_embedder_error(tmp_path, monkeypatch, capsys):
+    _prepare_chat_environment(tmp_path, monkeypatch)
+
+    def fail_embedder(cfg):  # noqa: D401, ANN001
+        raise vector_store.VectorStoreError("no embed")
+
+    monkeypatch.setattr(rag_cli, "_build_embedder", fail_embedder)
+    args = argparse.Namespace(dbs=None, resume=None, question=None)
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 2
+    assert "no embed" in capsys.readouterr().err
+
+
+def test_handle_chat_handles_chat_client_error(tmp_path, monkeypatch, capsys):
+    _prepare_chat_environment(tmp_path, monkeypatch)
+
+    monkeypatch.setattr(
+        rag_cli, "_build_embedder", lambda cfg: CLIStubEmbedder()
+    )
+
+    def fail_client(cfg):  # noqa: D401
+        raise RuntimeError("client boom")
+
+    monkeypatch.setattr(rag_cli, "_build_chat_client", fail_client)
+    args = argparse.Namespace(dbs=None, resume=None, question=None)
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 2
+    assert "client boom" in capsys.readouterr().err
+
+
+def test_handle_chat_handles_prepare_session_error(
+    tmp_path, monkeypatch, capsys
+):
+    _prepare_chat_environment(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        rag_cli, "_build_embedder", lambda cfg: CLIStubEmbedder()
+    )
+    monkeypatch.setattr(
+        rag_cli, "_build_chat_client", lambda cfg: CLIStubChatClient()
+    )
+
+    def raise_prepare(self, **kwargs):  # noqa: D401, ANN001
+        raise chat_mod.ChatError("prep failed")
+
+    monkeypatch.setattr(chat_mod.ChatRuntime, "prepare_session", raise_prepare)
+    args = argparse.Namespace(dbs=None, resume=None, question=None)
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 2
+    assert "prep failed" in capsys.readouterr().err
+
+
+def test_handle_chat_reports_question_error(tmp_path, monkeypatch, capsys):
+    _prepare_chat_environment(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        rag_cli, "_build_embedder", lambda cfg: CLIStubEmbedder()
+    )
+    monkeypatch.setattr(
+        rag_cli, "_build_chat_client", lambda cfg: CLIStubChatClient()
+    )
+
+    class DummyRuntime(chat_mod.ChatRuntime):
+        def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(chat_mod, "ChatRuntime", DummyRuntime)
+
+    def return_session(self, resume_id=None, vector_dbs=()):  # noqa: D401, ANN001
+        return types.SimpleNamespace()
+
+    def raise_ask(self, sess, question):  # noqa: D401, ANN001
+        raise chat_mod.ChatError("ask nope")
+
+    monkeypatch.setattr(DummyRuntime, "prepare_session", return_session)
+    monkeypatch.setattr(DummyRuntime, "ask", raise_ask)
+
+    args = argparse.Namespace(dbs=None, resume=None, question="hi")
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 2
+    assert "ask nope" in capsys.readouterr().err
+
+
+def test_handle_chat_invokes_interactive_loop(tmp_path, monkeypatch):
+    _prepare_chat_environment(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        rag_cli, "_build_embedder", lambda cfg: CLIStubEmbedder()
+    )
+    monkeypatch.setattr(
+        rag_cli, "_build_chat_client", lambda cfg: CLIStubChatClient()
+    )
+
+    called = {}
+
+    class DummyRuntime(chat_mod.ChatRuntime):
+        def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
+            super().__init__(*args, **kwargs)
+
+    def return_session(self, resume_id=None, vector_dbs=()):  # noqa: D401, ANN001
+        return types.SimpleNamespace()
+
+    def interactive(self, sess, console=None):  # noqa: D401, ANN001
+        called["interactive"] = True
+
+    monkeypatch.setattr(chat_mod, "ChatRuntime", DummyRuntime)
+    monkeypatch.setattr(DummyRuntime, "prepare_session", return_session)
+    monkeypatch.setattr(DummyRuntime, "ask", lambda self, sess, q: None)
+    monkeypatch.setattr(DummyRuntime, "interactive_loop", interactive)
+
+    args = argparse.Namespace(dbs=None, resume=None, question=None)
+    exit_code = rag_cli._handle_chat(args)
+    assert exit_code == 0
+    assert called["interactive"] is True
+
+
+def test_build_chat_client_uses_openai_settings(tmp_path, monkeypatch):
+    cfg = _prepare_chat_environment(tmp_path, monkeypatch)
+    captured = {}
+
+    def factory(**kwargs):  # noqa: D401, ANN001
+        captured.update(kwargs)
+        return "client"
+
+    monkeypatch.setattr(chat_mod, "OpenAIChatClient", factory)
+    client = rag_cli._build_chat_client(cfg)
+    assert client == "client"
+    assert captured["model"] == cfg.providers.openai.chat_model
+    assert captured["temperature"] == cfg.providers.openai.temperature
+    assert captured["api_base"] == cfg.providers.openai.api_base

@@ -1,5 +1,13 @@
 """Study RAG workspace package."""
 
+from .chat import (  # noqa: F401
+    ChatAnswer,
+    ChatClient,
+    ChatError,
+    ChatRuntime,
+    OpenAIChatClient,
+    RetrievalResult,
+)
 from .config import (  # noqa: F401
     CONFIG_PATH_ENV,
     ConfigError,
@@ -16,6 +24,12 @@ from .ingest import (  # noqa: F401
     OpenAIEmbeddingClient,
     TextChunker,
     ingest_sources,
+)
+from .session import (  # noqa: F401
+    ChatMessage,
+    ChatSession,
+    SessionError,
+    SessionStore,
 )
 from .vector_store import (  # noqa: F401
     EmbeddingMetadata,
@@ -41,6 +55,16 @@ __all__ = [
     "TextChunker",
     "IngestionReport",
     "ingest_sources",
+    "ChatError",
+    "ChatClient",
+    "ChatRuntime",
+    "OpenAIChatClient",
+    "ChatAnswer",
+    "RetrievalResult",
+    "ChatMessage",
+    "ChatSession",
+    "SessionError",
+    "SessionStore",
     "EmbeddingMetadata",
     "SourceDocument",
     "VectorStoreBackend",

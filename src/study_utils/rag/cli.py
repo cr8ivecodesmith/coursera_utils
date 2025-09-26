@@ -7,9 +7,13 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from rich.console import Console
+
+from . import chat as chat_mod
 from . import config as config_mod
 from . import data_dir
 from . import ingest as ingest_mod
+from . import session as session_mod
 from . import vector_store
 
 
@@ -104,6 +108,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "--force",
         action="store_true",
         help="Overwrite an existing database with the same name.",
+    )
+
+    chat_parser = subparsers.add_parser(
+        "chat",
+        help="Open an interactive Study RAG chat session.",
+    )
+    chat_parser.add_argument(
+        "--db",
+        dest="dbs",
+        action="append",
+        default=[],
+        help="Vector database to attach (repeatable).",
+    )
+    chat_parser.add_argument(
+        "--resume",
+        help="Session ID to resume (ignores --db unless adding new stores).",
+    )
+    chat_parser.add_argument(
+        "--question",
+        help="Send a single prompt and print the response before exiting.",
     )
 
     return parser
@@ -331,6 +355,65 @@ def _handle_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_chat(args: argparse.Namespace) -> int:
+    try:
+        cfg = config_mod.load_config()
+    except config_mod.ConfigError as exc:
+        _print_error(str(exc))
+        return 2
+
+    try:
+        embedder = _build_embedder(cfg)
+    except vector_store.VectorStoreError as exc:
+        _print_error(str(exc))
+        return 2
+
+    try:
+        chat_client = _build_chat_client(cfg)
+    except RuntimeError as exc:
+        _print_error(str(exc))
+        return 2
+
+    repo = _build_repository()
+    sessions_root = data_dir.sessions_dir()
+    store = session_mod.SessionStore(sessions_root)
+    runtime = chat_mod.ChatRuntime(
+        config=cfg,
+        repository=repo,
+        session_store=store,
+        embedder=embedder,
+        chat_client=chat_client,
+    )
+
+    dbs = tuple(args.dbs or [])
+    try:
+        sess = runtime.prepare_session(
+            resume_id=args.resume,
+            vector_dbs=dbs,
+        )
+    except (
+        chat_mod.ChatError,
+        session_mod.SessionError,
+        vector_store.VectorStoreError,
+    ) as exc:
+        _print_error(str(exc))
+        return 2
+
+    question = args.question
+    if question:
+        try:
+            answer = runtime.ask(sess, question)
+        except chat_mod.ChatError as exc:
+            _print_error(str(exc))
+            return 2
+        _print_chat_answer(answer)
+        return 0
+
+    console = Console()
+    runtime.interactive_loop(sess, console=console)
+    return 0
+
+
 def _build_repository() -> vector_store.VectorStoreRepository:
     root = data_dir.vector_db_dir()
     return vector_store.VectorStoreRepository(root)
@@ -351,6 +434,17 @@ def _build_embedder(cfg: config_mod.RagConfig) -> ingest_mod.EmbeddingClient:
         model=openai_cfg.embedding_model,
         api_base=openai_cfg.api_base,
         request_timeout=openai_cfg.request_timeout_seconds,
+    )
+
+
+def _build_chat_client(cfg: config_mod.RagConfig) -> chat_mod.ChatClient:
+    openai_cfg = cfg.providers.openai
+    return chat_mod.OpenAIChatClient(
+        model=openai_cfg.chat_model,
+        temperature=openai_cfg.temperature,
+        max_output_tokens=cfg.chat.response_tokens,
+        request_timeout=openai_cfg.request_timeout_seconds,
+        api_base=openai_cfg.api_base,
     )
 
 
@@ -432,6 +526,26 @@ def _print_manifest_details(manifest: vector_store.VectorStoreManifest) -> None:
         print(f"  chunks: {doc.chunk_count}")
 
 
+def _print_chat_answer(answer: chat_mod.ChatAnswer) -> None:
+    print(answer.response)
+    if not answer.contexts:
+        print("No retrieval context met the score threshold.")
+        return
+    print("Context snippets:")
+    for item in answer.contexts:
+        source = item.metadata.get("source_path", "unknown")
+        chunk = item.metadata.get("chunk_index")
+        chunk_info = f" (chunk {chunk})" if chunk is not None else ""
+        print(
+            "- {db}: {source}{chunk_info} (score {score:.3f})".format(
+                db=item.db_name,
+                source=source,
+                chunk_info=chunk_info,
+                score=item.score,
+            )
+        )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     try:
@@ -447,6 +561,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "delete": _handle_delete,
         "export": _handle_export,
         "import": _handle_import,
+        "chat": _handle_chat,
     }
     handler = handlers.get(args.command)
     if handler is None:
