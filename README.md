@@ -1,23 +1,18 @@
-Coursera Utils
-===
+# Study Utils
 
-A collection of scripts to help with studying.
+Study Utils is a collection of scripts that support the full study loop for
+online courses and self-directed learning.
 
-The main process is to:
+## Development setup
 
-1. Gather materials for a module
-2. Pre-study
-3. Take the online quizzes / exercise
-4. Deep dive on missed questions
-5. Repeat steps 3-4 until perfect
-7. Repeat step 1 for the next module
+- `uv` is the preferred workflow for managing dependencies and virtual
+  environments. Run `uv sync --dev` to install everything needed for local
+  development.
+- When working inside Termux, `pyenv` remains the more reliable option for
+  managing Python versions and virtual environments. Install Python 3.12 with
+  `pyenv` and create a virtual environment before running the tooling.
 
-In each step you should be taking non-linear notes focusing on connecting
-concepts with one another and even more importantly, your own experiences.
-
-Each step will have substeps helped by the scripts in this repository.
-
-## Requirements
+## System requirements
 
 ### OS Requirements (Ubuntu)
 
@@ -41,18 +36,6 @@ Notes:
 - Download all materials for a module.
 - At the very least the transcript file for the video.
 - If there's no transcript file available, use `python -m study_utils.transcribe_video`.
-
-## Pre-study
-
-## Take the online quizzes / exercise
-
-## Deep dive on missed questions
-
-## Repeat steps 3-4 until perfect
-
-## Write summary notes of most relevant concepts and how to use them
-
-## Repeat step 1 for the next module
 
 ## Utilities
 
