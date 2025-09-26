@@ -308,8 +308,7 @@ not at hard wrap length.
 This makes diffs smaller and reviews easier.
 
 ```md
-Caching Strategy
-===
+# Caching Strategy
 
 We cache GET responses for 5 minutes
 to reduce load on the upstream API.
@@ -320,8 +319,7 @@ for typical browsing sessions.
 ### Heading levels and examples
 
 ```md
-Feature Toggle Rollout
-===
+# Feature Toggle Rollout
 
 ## Overview
 
@@ -338,8 +336,7 @@ Feature Toggle Rollout
 ### Layering information
 
 ```md
-Background Jobs Strategy
-===
+# Background Jobs Strategy
 
 Offload non-blocking work to improve latency.
 
