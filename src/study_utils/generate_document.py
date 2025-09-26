@@ -323,5 +323,5 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     print(f"Generated document from {used} reference file(s) -> {output_path}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

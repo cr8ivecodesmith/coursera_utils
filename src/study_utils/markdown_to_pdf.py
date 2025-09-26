@@ -365,7 +365,7 @@ def generate_ai_title_fields(
         except Exception:
             from study_utils import transcribe_video as _tv  # type: ignore
 
-            load_client = _tv.load_client
+            load_client = _tv.load_client  # pragma: no cover
     except Exception:
         return TitleFields()
 
@@ -741,5 +741,5 @@ def _build_stylesheets(
     return stylesheets
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

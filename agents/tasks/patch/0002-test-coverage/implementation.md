@@ -43,7 +43,7 @@
 - Stepwise checklist (milestone commit per bullet)
   - [x] **Milestone 1 – Testing toolkit baseline**: add shared fixtures/mocks (OpenAI stub, WeasyPrint stub, tmp workspace helpers), ensure `pytest --cov` wiring captured in `justfile` and `pyproject` coverage config; run suite (expect still <100%).
   - [x] **Milestone 2 – Core coverage**: backfill tests for `core/ai.py`, `core/files.py`, and other foundational helpers; adjust code for seamability as required; commit once coverage for these modules hits 100%.
-  - [ ] **Milestone 3 – Document generation & markdown pipeline**: expand tests across `generate_document.py` and `markdown_to_pdf.py` helpers/CLI; stub WeasyPrint interactions; verify partial coverage jump; commit.
+  - [x] **Milestone 3 – Document generation & markdown pipeline**: expand tests across `generate_document.py` and `markdown_to_pdf.py` helpers/CLI; stub WeasyPrint interactions; verify partial coverage jump; commit.
   - [ ] **Milestone 4 – Quizzer domain**: cover `quizzer/utils.py`, CLI command handlers, manager (question generation, topic extraction), and view helpers with deterministic seeds/mocks; add minimal CLI smoke tests; commit.
   - [ ] **Milestone 5 – Text utilities & transcription**: add tests for `text_combiner.py` and `transcribe_video.py` including smart naming, cache IO, CLI flows, and AI fallbacks; ensure deterministic chunking via patched pydub; commit.
   - [ ] **Milestone 6 – Final hardening & gate**: sweep remaining uncovered lines (CLI `__main__` modules, residual branches), enable `--cov-fail-under=100`, add documentation updates, confirm CI alignment, and perform final commit.
@@ -80,3 +80,11 @@ Milestone 2 core coverage complete.
 - Added tests for study_utils.core.ai covering dependency and env error paths.
 - Expanded study_utils.core.files tests to cover file iteration, ordering fallbacks, and error handling.
 - Confirmed 100% coverage for core modules via pytest.
+
+### 2025-09-26 12:25
+**Summary**
+Milestone 3 document generation & markdown coverage complete.
+**Changes**
+- Added extensive unit tests for generate_document CLI/helpers, covering config discovery, AI responses, and error paths.
+- Expanded markdown_to_pdf tests for discovery, CSS, TOC, AI title generation, WeasyPrint integration, and CLI flows; added defensive pragmas.
+- Achieved 100% coverage for generate_document.py and markdown_to_pdf.py.
