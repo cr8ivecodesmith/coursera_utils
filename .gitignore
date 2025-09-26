@@ -35,3 +35,6 @@ next_steps.md
 *.iws
 out/
 
+.envrc
+
+coverage.xml

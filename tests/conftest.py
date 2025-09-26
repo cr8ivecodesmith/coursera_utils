@@ -1,63 +1,62 @@
+from __future__ import annotations
+
 import sys
-import types
 from pathlib import Path
-from types import SimpleNamespace
+from typing import Iterator
 
-# Ensure project root is importable
-ROOT = Path(__file__).resolve().parents[1]
-addtl_paths = (
-    ROOT.joinpath("src"),
-    ROOT.joinpath("src", "study_utils", "quizzer"),
-    ROOT,
+import pytest
+
+TESTS_DIR = Path(__file__).resolve().parent
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
+
+from fixtures import (  # noqa: E402
+    WorkspaceBuilder,
+    install_dotenv_stub_module,
+    install_openai_stub_module,
+    install_pydub_stub_modules,
+    install_weasyprint_stub_module,
 )
-addtl_paths = (i for i in addtl_paths if str(i) not in sys.path)
+from fixtures.openai import OpenAIStubFactory  # noqa: E402
+from fixtures.weasyprint import HTMLStub  # noqa: E402
 
-for i in addtl_paths:
-    sys.path.insert(0, str(i))
+# Ensure project root and src/ are importable when tests spawn subprocesses
+ROOT = TESTS_DIR.parent
+for extra in (ROOT, ROOT / "src", ROOT / "src" / "study_utils" / "quizzer"):
+    path_str = str(extra)
+    if path_str not in sys.path:
+        sys.path.insert(0, path_str)
 
-# Stub out heavy/optional deps at import time so tests can import
-# transcribe_video
-if "pydub" not in sys.modules:
-    pydub = types.ModuleType("pydub")
+# Install lightweight stub modules so imports succeed without heavy deps
+OPENAI_FACTORY: OpenAIStubFactory = install_openai_stub_module()
+install_dotenv_stub_module()
+install_pydub_stub_modules()
+install_weasyprint_stub_module()
 
-    class AudioSegmentStub:
-        @classmethod
-        def from_file(cls, *a, **k):
-            raise RuntimeError(
-                "AudioSegment.from_file should be stubbed in tests that use it"
-            )
 
-    pydub.AudioSegment = AudioSegmentStub
-    sys.modules["pydub"] = pydub
-if "pydub.utils" not in sys.modules:
-    utils = types.ModuleType("pydub.utils")
+@pytest.fixture(autouse=True)
+def _reset_openai_factory() -> Iterator[None]:
+    OPENAI_FACTORY.reset()
+    yield
+    OPENAI_FACTORY.reset()
 
-    def make_chunks(*a, **k):
-        return []
 
-    utils.make_chunks = make_chunks
-    sys.modules["pydub.utils"] = utils
+@pytest.fixture
+def openai_factory() -> OpenAIStubFactory:
+    """Access the OpenAI stub factory to inspect calls or queue responses."""
 
-if "openai" not in sys.modules:
-    openai = types.ModuleType("openai")
+    return OPENAI_FACTORY
 
-    class OpenAI:
-        def __init__(self, *a, **k):
-            def create(**kwargs):
-                choice = SimpleNamespace(message=SimpleNamespace(content=""))
-                return SimpleNamespace(choices=[choice])
 
-            completions = SimpleNamespace(create=create)
-            self.chat = SimpleNamespace(completions=completions)
+@pytest.fixture
+def workspace(tmp_path: Path) -> WorkspaceBuilder:
+    """Provide a helper bound to pytest's per-test tmp directory."""
 
-    openai.OpenAI = OpenAI
-    sys.modules["openai"] = openai
+    return WorkspaceBuilder(tmp_path)
 
-if "dotenv" not in sys.modules:
-    dotenv = types.ModuleType("dotenv")
 
-    def load_dotenv(*a, **k):
-        return None
-
-    dotenv.load_dotenv = load_dotenv
-    sys.modules["dotenv"] = dotenv
+@pytest.fixture(autouse=True)
+def _clear_weasyprint_calls() -> Iterator[None]:
+    HTMLStub.pop_calls()
+    yield
+    HTMLStub.pop_calls()
