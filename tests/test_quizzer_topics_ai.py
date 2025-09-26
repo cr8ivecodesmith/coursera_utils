@@ -17,10 +17,12 @@ def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):
 
     class FakeClient:
         def __init__(self):
-            payload = [{
-                "name": "Advanced Techniques",
-                "description": "Deepdive",
-            }]
+            payload = [
+                {
+                    "name": "Advanced Techniques",
+                    "description": "Deepdive",
+                }
+            ]
 
             def create(**kwargs):
                 message = SimpleNamespace(content=json.dumps(payload))
@@ -32,8 +34,6 @@ def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):
 
     # Once implemented, this should return Intro,
     # Basics (heuristics) + Advanced Techniques (AI)
-    topics = qz.extract_topics(
-        [(f, md)], use_ai=True, client=FakeClient(), k=5
-    )
+    topics = qz.extract_topics([(f, md)], use_ai=True, client=FakeClient(), k=5)
     names = {t["name"] for t in topics}
     assert {"Intro", "Basics", "Advanced Techniques"}.issubset(names)

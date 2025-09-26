@@ -62,10 +62,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
 def _cmd_topics_generate(args: argparse.Namespace) -> int:
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
-        print(
-            "Error: quizzer.toml not found. "
-            "Run 'quizzer init <name>' first."
-        )
+        print("Error: quizzer.toml not found. Run 'quizzer init <name>' first.")
         return 2
     cfg = _load_toml(cfg_path)
     try:
@@ -132,10 +129,7 @@ def _cmd_not_implemented(label: str) -> int:
 def _cmd_questions_generate(args: argparse.Namespace) -> int:
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
-        print(
-            "Error: quizzer.toml not found. "
-            "Run 'quizzer init <name>' first."
-        )
+        print("Error: quizzer.toml not found. Run 'quizzer init <name>' first.")
         return 2
     cfg = _load_toml(cfg_path)
     try:

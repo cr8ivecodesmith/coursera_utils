@@ -4,9 +4,74 @@ import random
 
 from pathlib import Path
 from collections import defaultdict
-from typing import Optional, List, Sequence, Tuple, Iterable, Dict
+from typing import Optional, List, Sequence, Tuple, Iterable, Dict, Any
 
 from ..utils import load_client, _slugify
+
+
+def _topic_source_paths(topic: Dict[str, object]) -> List[Path]:
+    raw = topic.get("source_paths", []) or []
+    if not isinstance(raw, list):
+        return []
+    paths: List[Path] = []
+    for entry in raw:
+        try:
+            p = Path(entry)
+        except Exception:
+            continue
+        if p.exists() and p.is_file():
+            paths.append(p)
+    return paths
+
+
+def _read_topic_file(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _collect_heading_block(
+    lines: List[str], name: str, heading_pattern: "re.Pattern[str]"
+) -> List[str]:
+    if not name:
+        return []
+    target = name.lower()
+    captured: List[str] = []
+    capturing = False
+    for line in lines:
+        match = heading_pattern.match(line)
+        if match:
+            heading = match.group(1).strip().strip("# ").lower()
+            if capturing:
+                break
+            capturing = heading == target
+            if capturing:
+                captured.append(line)
+            continue
+        if capturing:
+            if line.strip().startswith("#"):
+                break
+            captured.append(line)
+    return captured
+
+
+def _fallback_topic_lines(lines: List[str], name: str) -> List[str]:
+    if not name:
+        return []
+    needle = name.lower()
+    return [ln for ln in lines if needle in ln.lower()]
+
+
+def _extract_topic_snippet(
+    lines: List[str], name: str, pattern: "re.Pattern[str]"
+) -> str:
+    block = _collect_heading_block(lines, name, pattern)
+    if not block:
+        block = _fallback_topic_lines(lines, name)
+    if not block:
+        return ""
+    return "\n".join(block).strip()
 
 
 def _gather_topic_context(
@@ -20,47 +85,20 @@ def _gather_topic_context(
     - Concatenate across files up to max_chars
     """
     name = str(topic.get("name", "")).strip()
-    sources = topic.get("source_paths", []) or []
-    if not isinstance(sources, list):
-        return ""
-    parts: List[str] = []
     pattern = re.compile(r"^\s*#+\s+(.+)$")
-    for s in sources:
-        p = Path(s)
-        if not p.exists() or not p.is_file():
+    parts: List[str] = []
+    total = 0
+    for path in _topic_source_paths(topic):
+        text = _read_topic_file(path)
+        if not text:
             continue
-        try:
-            text = p.read_text(encoding="utf-8", errors="replace")
-        except Exception:
+        snippet = _extract_topic_snippet(text.splitlines(), name, pattern)
+        if not snippet:
             continue
-        lines = text.splitlines()
-        collected: List[str] = []
-        capture = False
-        for ln in lines:
-            m = pattern.match(ln)
-            if m:
-                heading = m.group(1).strip().strip("# ")
-                # Start capture when heading matches name (case-insensitive)
-                capture = heading.lower() == name.lower() if name else False
-                if capture:
-                    collected.append(ln)
-                continue
-            if capture:
-                # Stop when next heading encountered
-                if ln.strip().startswith("#"):
-                    capture = False
-                else:
-                    collected.append(ln)
-        # Fallback: lines that contain topic name
-        if not collected and name:
-            for ln in lines:
-                if name.lower() in ln.lower():
-                    collected.append(ln)
-        if collected:
-            snippet = "\n".join(collected).strip()
-            if snippet:
-                parts.append(f"From {p.name}:\n{snippet}")
-        if sum(len(part) for part in parts) > max_chars:
+        entry = f"From {path.name}:\n{snippet}"
+        parts.append(entry)
+        total += len(entry)
+        if total >= max_chars:
             break
     out = "\n\n".join(parts)
     return out[:max_chars]
@@ -214,43 +252,29 @@ def validate_mcq(q: Dict[str, object]) -> None:
         raise ValueError("answer must match one of the choice keys")
 
 
-def ai_generate_mcqs_for_topic(
-    topic: Dict[str, object],
-    n: int = 3,
-    *,
-    client: object = None,
-    prompt: Optional[str] = None,
-    model: str = "gpt-4o-mini",
-    temperature: float = 0.2,
-    seed: Optional[int] = None,
-    context: Optional[str] = None,
-) -> List[Dict[str, object]]:
-    """Generate n MCQ questions for a topic using an AI model.
+def _ensure_ai_client(client: Optional[object]) -> Optional[object]:
+    if client is not None:
+        return client
+    if load_client is None:
+        return None
+    try:
+        return load_client()
+    except Exception:
+        return None
 
-    Return up to ``n`` validated MCQ dicts with normalized shape. Invalid items
-    are skipped.
-    """
-    if n <= 0:
-        return []
-    if client is None and load_client is not None:  # pragma: no cover
-        try:
-            client = load_client()
-        except Exception:
-            client = None
-    if client is None:
-        return []
 
-    topic_id = str(
-        topic.get("id")
-        or _slugify(str(topic.get("name", "topic")))
-    )
-    topic_name = str(topic.get("name") or topic_id)
+def _build_mcq_prompts(
+    topic_name: str,
+    n: int,
+    prompt: Optional[str],
+    context: Optional[str],
+) -> Tuple[str, str]:
     sys_prompt = "You generate high-quality multiple-choice study questions."
-    ctx_block = (
-        ("\n\nContext (from source materials):\n" + context.strip())
-        if isinstance(context, str) and context.strip()
-        else ""
-    )
+    ctx_block = ""
+    if isinstance(context, str):
+        ctx = context.strip()
+        if ctx:
+            ctx_block = "\n\nContext (from source materials):\n" + ctx
     base_instructions = (
         prompt
         or "Create concise multiple-choice questions covering the topic. "
@@ -271,73 +295,104 @@ def ai_generate_mcqs_for_topic(
         f"{constraints}"
         f"{ctx_block}"
     )
+    return sys_prompt, user_prompt
+
+
+def _chat_completion_content(
+    client: object,
+    *,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float,
+    max_tokens: int,
+) -> str:
     try:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=model,
             messages=[
-                {"role": "system", "content": sys_prompt},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=temperature,
-            max_tokens=800,
+            max_tokens=max_tokens,
         )
         raw_content = resp.choices[0].message.content  # type: ignore[index]
-        content = (raw_content or "").strip().replace("\n", "")
+        return (raw_content or "").strip()
     except Exception:
-        return []
+        return ""
 
-    items: List[Dict[str, object]] = []
+
+def _extract_json_array(content: str) -> List[Any]:
+    if not content:
+        return []
+    fenced = re.search(r"```(?:json)?\s*(.+?)```", content, re.DOTALL)
+    payload = fenced.group(1) if fenced else content
     try:
-        pat = re.compile(r"^(```json)(.+)(```)$")
-        _data = pat.match(content)
-        if _data:
-            data = json.loads(_data.group(2))
-        else:
-            data = json.loads(content)
+        data = json.loads(payload)
     except Exception:
         return []
-    if not isinstance(data, list):
-        return []
+    return data if isinstance(data, list) else []
 
-    def normalize_choice_list(raw_choices) -> List[Dict[str, str]]:
-        out: List[Dict[str, str]] = []
-        if isinstance(raw_choices, list):
-            for i, ch in enumerate(raw_choices):
-                if isinstance(ch, dict):
-                    key = str(ch.get("key", "")).strip() or chr(ord("A") + i)
-                    text = str(ch.get("text", "")).strip()
-                else:
-                    key = chr(ord("A") + i)
-                    text = str(ch).strip()
-                if not text:
-                    continue
-                out.append({"key": key.upper()[:1], "text": text})
-        return out
 
-    for rec in data[:n]:
+def _normalize_choice_list(raw_choices: Any) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    if isinstance(raw_choices, list):
+        for i, ch in enumerate(raw_choices):
+            if isinstance(ch, dict):
+                key = str(ch.get("key", "")).strip() or chr(ord("A") + i)
+                text = str(ch.get("text", "")).strip()
+            else:
+                key = chr(ord("A") + i)
+                text = str(ch).strip()
+            if not text:
+                continue
+            out.append({"key": key.upper()[:1], "text": text})
+    return out
+
+
+def _resolve_mcq_answer(raw_answer: Any, choices: List[Dict[str, str]]) -> str:
+    if isinstance(raw_answer, int) and 0 <= raw_answer < len(choices):
+        return choices[raw_answer]["key"]
+    if isinstance(raw_answer, str):
+        candidate = raw_answer.strip().upper()
+        keys = {c["key"] for c in choices}
+        if candidate in keys:
+            return candidate
+        for c in choices:
+            if candidate == c["text"].strip().upper():
+                return c["key"]
+    return str(raw_answer or "").strip().upper()
+
+
+def _build_mcq_items(
+    records: List[Any],
+    *,
+    n: int,
+    topic_id: str,
+    seed: Optional[int],
+) -> List[Dict[str, object]]:
+    rng = random.Random(seed)
+    items: List[Dict[str, object]] = []
+    for rec in records:
+        if len(items) >= n:
+            break
         if not isinstance(rec, dict):
             continue
         stem = str(rec.get("stem", "")).strip()
         if not stem:
             continue
-        choices = normalize_choice_list(rec.get("choices", []))
-        ans = rec.get("answer")
-        if isinstance(ans, int) and 0 <= ans < len(choices):
-            answer = choices[ans]["key"]
-        else:
-            answer = str(ans or "").strip().upper()
-            if answer and answer not in {c["key"] for c in choices}:
-                for c in choices:
-                    if answer.lower() == c["text"].lower():
-                        answer = c["key"]
-                        break
+        choices = _normalize_choice_list(rec.get("choices", []))
+        if not choices:
+            continue
+        answer = _resolve_mcq_answer(rec.get("answer"), choices)
         explanation = str(rec.get("explanation", "")).strip()
         generated_id = (
-            f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-"
-            f"{len(items)}"
+            rec.get("id")
+            or f"{topic_id}-{rng.randint(10000, 99999)}-{len(items)}"
         )
-        q = {
-            "id": rec.get("id") or generated_id,
+        candidate = {
+            "id": generated_id,
             "topic_id": topic_id,
             "type": "mcq",
             "stem": stem,
@@ -346,11 +401,115 @@ def ai_generate_mcqs_for_topic(
             "explanation": explanation,
         }
         try:
-            validate_mcq(q)
+            validate_mcq(candidate)
         except Exception:
             continue
-        items.append(q)
+        items.append(candidate)
+    return items
+
+
+def ai_generate_mcqs_for_topic(
+    topic: Dict[str, object],
+    n: int = 3,
+    *,
+    client: object = None,
+    prompt: Optional[str] = None,
+    model: str = "gpt-4o-mini",
+    temperature: float = 0.2,
+    seed: Optional[int] = None,
+    context: Optional[str] = None,
+) -> List[Dict[str, object]]:
+    """Generate n MCQ questions for a topic using an AI model.
+
+    Return up to ``n`` validated MCQ dicts with normalized shape. Invalid items
+    are skipped.
+    """
+    if n <= 0:
+        return []
+    resolved_client = _ensure_ai_client(client)
+    if resolved_client is None:
+        return []
+
+    topic_id = str(topic.get("id") or _slugify(str(topic.get("name", "topic"))))
+    topic_name = str(topic.get("name") or topic_id)
+    sys_prompt, user_prompt = _build_mcq_prompts(topic_name, n, prompt, context)
+    content = _chat_completion_content(
+        resolved_client,
+        model=model,
+        system_prompt=sys_prompt,
+        user_prompt=user_prompt,
+        temperature=temperature,
+        max_tokens=800,
+    )
+    content = content.replace("\n", "")
+    if not content:
+        return []
+
+    data = _extract_json_array(content)
+    items = _build_mcq_items(data, n=n, topic_id=topic_id, seed=seed)
     return items[:n]
+
+
+def _summarize_topic_sources(
+    sources: Iterable[Tuple[Path, str]],
+    *,
+    source_max_lines: Optional[int],
+    source_max_lines_chars: Optional[int],
+) -> str:
+    parts: List[str] = []
+    max_lines = source_max_lines or 0
+    max_chars = source_max_lines_chars or 0
+    for path, text in sources:
+        snippet_lines = (text or "").splitlines()
+        if max_lines:
+            snippet_lines = [ln for ln in snippet_lines if ln.strip()][
+                :max_lines
+            ]
+        joined = "\n".join(snippet_lines)
+        if max_chars and len(joined) > max_chars:
+            joined = joined[:max_chars]
+        parts.append(f"File: {path.name}\n{joined}\n")
+    return "\n\n".join(parts)
+
+
+def _parse_topic_suggestions(
+    data: List[Any], limit: Optional[int]
+) -> List[Dict[str, object]]:
+    suggestions: List[Dict[str, object]] = []
+    max_items = limit or len(data)
+    for item in data:
+        if len(suggestions) >= max_items:
+            break
+        if isinstance(item, str):
+            name = item.strip()
+            if not name:
+                continue
+            suggestions.append(
+                {
+                    "id": _slugify(name),
+                    "name": name,
+                    "description": "",
+                    "source_paths": [],
+                    "created_at": "",
+                }
+            )
+            continue
+        if isinstance(item, dict):
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            source_paths = item.get("source_paths", [])
+            clean_paths = source_paths if isinstance(source_paths, list) else []
+            suggestions.append(
+                {
+                    "id": _slugify(name),
+                    "name": name,
+                    "description": str(item.get("description", "")),
+                    "source_paths": clean_paths,
+                    "created_at": "",
+                }
+            )
+    return suggestions
 
 
 def ai_extract_topics(
@@ -370,91 +529,35 @@ def ai_extract_topics(
     Will parse model output (JSON array of names or objects) and
     return a list of topic dicts with id/name/description/source_paths.
     """
-    # Acquire client if not provided
-    if (
-        client is None and load_client is not None
-    ):  # pragma: no cover - exercised via integration
-        try:
-            client = load_client()
-        except Exception:
-            client = None
-    if client is None:
+    resolved_client = _ensure_ai_client(client)
+    if resolved_client is None:
         return []
 
-    # Build a compact prompt using a small snippet of each source
-    parts: List[str] = []
-    for path, text in sources:
-        snippet = (text or "").strip().splitlines()
-        snippet = [ln for ln in snippet if ln.strip()][:source_max_lines]
-        joined = "\n".join(snippet[:source_max_lines_chars])
-        parts.append(f"File: {path.name}\n{joined}\n")
+    summarized = _summarize_topic_sources(
+        sources,
+        source_max_lines=source_max_lines,
+        source_max_lines_chars=source_max_lines_chars,
+    )
     base_prompt = (
         prompt
         or "Suggest concise study topics from the following notes. "
         "Output a JSON array of objects with name and optional description."
     )
-    user_prompt = base_prompt + "\n\n" + "\n\n".join(parts)
+    user_prompt = (base_prompt + "\n\n" + summarized).strip()
 
-    try:
-        resp = client.chat.completions.create(  # type: ignore[attr-defined]
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You extract clean, deduplicated topic names."
-                    ),
-                },
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=temperature,
-            max_tokens=600,
-        )
-        raw_content = resp.choices[0].message.content  # type: ignore[index]
-        content = (raw_content or "").strip()
-    except Exception:
+    content = _chat_completion_content(
+        resolved_client,
+        model=model,
+        system_prompt="You extract clean, deduplicated topic names.",
+        user_prompt=user_prompt,
+        temperature=temperature,
+        max_tokens=600,
+    )
+    if not content:
         return []
 
-    # Parse JSON output: accept ["Topic", ...] or
-    # [{"name": "...", "description": "..."}, ...]
-    suggestions: List[Dict[str, object]] = []
-    try:
-        data = json.loads(content)
-        if isinstance(data, list):
-            for item in data[: k or len(data)]:
-                if isinstance(item, str):
-                    nm = item.strip()
-                    if not nm:
-                        continue
-                    suggestions.append(
-                        {
-                            "id": _slugify(nm),
-                            "name": nm,
-                            "description": "",
-                            "source_paths": [],
-                            "created_at": "",
-                        }
-                    )
-                elif isinstance(item, dict):
-                    nm = str(item.get("name", "")).strip()
-                    if not nm:
-                        continue
-                    suggestions.append(
-                        {
-                            "id": _slugify(nm),
-                            "name": nm,
-                            "description": str(item.get("description", "")),
-                            "source_paths": item.get("source_paths", [])
-                            if isinstance(item.get("source_paths", []), list)
-                            else [],
-                            "created_at": "",
-                        }
-                    )
-    except Exception:
-        # If the model didn't return JSON, ignore AI suggestions
-        return []
-
-    return suggestions
+    data = _extract_json_array(content)
+    return _parse_topic_suggestions(data, k)
 
 
 def extract_topics(
@@ -474,6 +577,19 @@ def extract_topics(
     - Record simple description (first line after heading if available)
     - Track source file path for traceability
     """
+    source_list = list(sources)
+    heuristic = _collect_heading_topics(source_list)
+    if not use_ai:
+        return heuristic
+    ai_topics = ai_extract_topics(
+        source_list, k=k, client=client, prompt=ai_prompt, seed=seed
+    )
+    return _merge_topic_lists(heuristic, ai_topics)
+
+
+def _collect_heading_topics(
+    sources: Sequence[Tuple[Path, str]],
+) -> List[Dict[str, object]]:
     topics: Dict[str, Dict[str, object]] = {}
     for path, text in sources:
         lines = (text or "").splitlines()
@@ -481,65 +597,69 @@ def extract_topics(
             line = raw.strip()
             if not line or not line.startswith("#"):
                 continue
-            m = re.match(r"^(#+)\s+(.*)$", line)
-            if not m:
+            match = re.match(r"^(#+)\s+(.*)$", line)
+            if not match:
                 continue
-            level = len(m.group(1))
+            level = len(match.group(1))
             if level > 2:
                 continue
-            name = m.group(2).strip().rstrip("# ")
+            name = match.group(2).strip().rstrip("# ")
             if not name:
                 continue
             slug = _slugify(name)
-            if slug in topics:
-                existing_paths = topics[slug].get("source_paths", [])
+            entry = topics.get(slug)
+            if entry:
+                existing_paths = entry.get("source_paths", [])
                 path_set = (
                     {str(p) for p in existing_paths}
                     if isinstance(existing_paths, list)
                     else set()
                 )
                 path_set.add(str(path))
-                topics[slug]["source_paths"] = sorted(path_set)
+                entry["source_paths"] = sorted(path_set)
                 continue
-            desc = ""
+            description = ""
             for j in range(i + 1, min(i + 6, len(lines))):
                 nxt = lines[j].strip()
                 if nxt and not nxt.startswith("#"):
-                    desc = nxt
+                    description = nxt
                     break
             topics[slug] = {
                 "id": slug,
                 "name": name,
-                "description": desc,
+                "description": description,
                 "source_paths": [str(path)],
                 "created_at": "",
             }
-    heuristic = list(topics.values())
-    if not use_ai:
-        return heuristic
-    ai_topics = ai_extract_topics(
-        sources, k=k, client=client, prompt=ai_prompt, seed=seed
-    )
+    return list(topics.values())
+
+
+def _merge_topic_lists(
+    heuristic: Sequence[Dict[str, object]],
+    ai_topics: Sequence[Dict[str, object]],
+) -> List[Dict[str, object]]:
     merged: Dict[str, Dict[str, object]] = {}
     for item in heuristic:
-        merged[str(item["id"])] = item
-    for t in ai_topics:
-        slug = str(t.get("id") or _slugify(str(t.get("name", ""))))
-        if slug in merged:
-            if t.get("name") and len(str(t.get("name"))) > len(
-                str(merged[slug].get("name", ""))
+        merged[str(item["id"])] = dict(item)
+    for topic in ai_topics:
+        slug = str(topic.get("id") or _slugify(str(topic.get("name", ""))))
+        existing = merged.get(slug)
+        if existing:
+            ai_name = topic.get("name")
+            if ai_name and len(str(ai_name)) > len(
+                str(existing.get("name", ""))
             ):
-                merged[slug]["name"] = t.get("name")
-            sp = set(merged[slug].get("source_paths", [])) | set(
-                t.get("source_paths", []) or []
-            )  # type: ignore[arg-type]
-            merged[slug]["source_paths"] = sorted(sp)
-        else:
-            merged[slug] = {
-                "id": slug,
-                "name": t.get("name") or slug,
-                "description": t.get("description", ""),
-                "source_paths": t.get("source_paths", []) or [],
-                "created_at": "",
-            }
+                existing["name"] = ai_name
+            combined_paths = set(existing.get("source_paths", [])) | set(
+                topic.get("source_paths", []) or []
+            )
+            existing["source_paths"] = sorted(combined_paths)
+            continue
+        merged[slug] = {
+            "id": slug,
+            "name": topic.get("name") or slug,
+            "description": topic.get("description", ""),
+            "source_paths": topic.get("source_paths", []) or [],
+            "created_at": "",
+        }
     return list(merged.values())

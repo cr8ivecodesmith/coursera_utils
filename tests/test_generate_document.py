@@ -105,6 +105,4 @@ def test_generate_document_no_matching_files_raises(
     except FileNotFoundError as e:
         assert "No matching reference files" in str(e)
     else:
-        raise AssertionError(
-            "Expected FileNotFoundError when no files matched"
-        )
+        raise AssertionError("Expected FileNotFoundError when no files matched")

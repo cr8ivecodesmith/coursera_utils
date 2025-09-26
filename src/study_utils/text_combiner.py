@@ -142,44 +142,43 @@ def iter_text_files(
     if level_limit < 0:
         raise ValueError("--level-limit must be >= 0")
 
-    for p in paths:
-        if p.is_file():
-            if _matches_extension(p, extensions):
-                yield p
+    for path in paths:
+        if path.is_file():
+            if _matches_extension(path, extensions):
+                yield path
             continue
-        if not p.exists():
-            raise FileNotFoundError(f"Input not found: {p}")
-        if not p.is_dir():
-            # Unknown type; skip silently
+        if not path.exists():
+            raise FileNotFoundError(f"Input not found: {path}")
+        if not path.is_dir():
             continue
+        yield from _iter_text_directory(path, extensions, level_limit)
 
-        if level_limit == 0:
-            # No limit: include all descendants
-            for f in sorted(
-                (c for c in p.rglob("*") if c.is_file()),
-                key=lambda x: x.name.lower(),
-            ):
-                if _matches_extension(f, extensions):
-                    yield f
-        else:
-            # Bounded depth: include files whose relative path length is
-            # within the level limit.
-            for f in sorted(
-                (c for c in p.rglob("*") if c.is_file()),
-                key=lambda x: x.name.lower(),
-            ):
-                try:
-                    rel = f.relative_to(p)
-                except Exception:
-                    continue
-                # Directory depth is number of directories between p and f
-                # For files, len(rel.parts) counts directories + filename
-                # Allow len(parts) <= level_limit to include up to
-                # (level_limit - 1) directories.
-                if len(rel.parts) <= level_limit and _matches_extension(
-                    f, extensions
-                ):
-                    yield f
+
+def _iter_text_directory(
+    root: Path, extensions: Set[str], level_limit: int
+) -> Iterator[Path]:
+    for candidate in _sorted_directory_files(root):
+        if level_limit and not _within_level_limit(
+            candidate, root, level_limit
+        ):
+            continue
+        if _matches_extension(candidate, extensions):
+            yield candidate
+
+
+def _sorted_directory_files(root: Path) -> List[Path]:
+    return sorted(
+        (child for child in root.rglob("*") if child.is_file()),
+        key=lambda x: x.name.lower(),
+    )
+
+
+def _within_level_limit(path: Path, root: Path, level_limit: int) -> bool:
+    try:
+        rel = path.relative_to(root)
+    except Exception:
+        return False
+    return len(rel.parts) <= level_limit
 
 
 def order_files(files: Sequence[Path], order_by: Optional[str]) -> List[Path]:

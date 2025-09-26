@@ -2,7 +2,7 @@ import re
 import json
 
 from pathlib import Path
-from typing import Optional, List, Sequence, Tuple
+from typing import Optional, List, Sequence, Tuple, Set
 
 try:  # optional: reuse existing OpenAI client loader
     from ..transcribe_video import load_client  # type: ignore
@@ -88,42 +88,49 @@ def iter_quiz_files(
         raise ValueError("level_limit must be >= 0")
 
     exts = {e.lower().lstrip(".") for e in extensions}
-    out: List[Path] = []
+    collected: List[Path] = []
+    for raw_path in paths:
+        path = Path(raw_path)
+        collected.extend(_collect_quiz_files_from_path(path, exts, level_limit))
+    return collected
 
-    def _match(p: Path) -> bool:
-        return p.is_file() and p.suffix.lower().lstrip(".") in exts
 
-    for p in paths:
-        p = Path(p)
-        if not p.exists():
+def _collect_quiz_files_from_path(
+    path: Path, extensions: Set[str], level_limit: int
+) -> List[Path]:
+    if not path.exists():
+        return []
+    if path.is_file():
+        return [path] if _matches_extension(path, extensions) else []
+    if not path.is_dir():
+        return []
+    return [
+        file
+        for file in _iter_directory_files(path, level_limit)
+        if _matches_extension(file, extensions)
+    ]
+
+
+def _matches_extension(path: Path, extensions: Set[str]) -> bool:
+    return path.is_file() and path.suffix.lower().lstrip(".") in extensions
+
+
+def _iter_directory_files(base: Path, level_limit: int) -> List[Path]:
+    files = sorted(
+        (child for child in base.rglob("*") if child.is_file()),
+        key=lambda x: x.name.lower(),
+    )
+    if level_limit == 0:
+        return files
+    limited: List[Path] = []
+    for child in files:
+        try:
+            rel = child.relative_to(base)
+        except Exception:
             continue
-        if p.is_file():
-            if _match(p):
-                out.append(p)
-            continue
-        if not p.is_dir():
-            continue
-        if level_limit == 0:
-            files = sorted(
-                (c for c in p.rglob("*") if c.is_file()),
-                key=lambda x: x.name.lower(),
-            )
-            for f in files:
-                if _match(f):
-                    out.append(f)
-        else:
-            files = sorted(
-                (c for c in p.rglob("*") if c.is_file()),
-                key=lambda x: x.name.lower(),
-            )
-            for f in files:
-                try:
-                    rel = f.relative_to(p)
-                except Exception:
-                    continue
-                if len(rel.parts) <= level_limit and _match(f):
-                    out.append(f)
-    return out
+        if len(rel.parts) <= level_limit:
+            limited.append(child)
+    return limited
 
 
 def read_jsonl(path: Path) -> List[dict]:

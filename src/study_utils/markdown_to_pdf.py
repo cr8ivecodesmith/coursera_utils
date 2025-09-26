@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date
 from html import escape
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple, cast
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, cast
 
 from jinja2 import Environment, FileSystemLoader, Template
 from markdown_it import MarkdownIt
@@ -492,11 +492,7 @@ def assemble_html(
         # top-level entries only. In practice, we collected headings during
         # rendering and could pass them separately. For simplicity, users get
         # a section list.
-        toc_items = [
-            f"<li>{escape(title)}</li>"
-            for title, _ in parts
-            if title
-        ]
+        toc_items = [f"<li>{escape(title)}</li>" for title, _ in parts if title]
         if toc_items:
             body_parts.append(
                 '<nav class="toc-root"><h2>Table of Contents</h2><ul>'
@@ -546,58 +542,94 @@ def build_markdown_it(extensions: Sequence[str]) -> MarkdownIt:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
-    p = argparse.ArgumentParser(
+    args = _parse_markdown_args(argv)
+    out_path = Path(args.OUTPUT).expanduser().resolve()
+    files = _collect_markdown_inputs(args)
+    page_css = _build_page_css_from_args(args)
+    highlight_css = default_highlight_css(args.highlight_style)
+    md = build_markdown_it(args.extensions)
+
+    parts, sample_text = _render_markdown_parts(files, md)
+    title_html = _build_title_page_html(args, sample_text)
+
+    if args.dry_run:
+        _print_dry_run(args, files, out_path)
+        return
+
+    html_doc = assemble_html(
+        parts,
+        include_toc=args.toc,
+        toc_depth=args.toc_depth,
+        highlight_css=highlight_css,
+        custom_css_href=args.css,
+        title_html=title_html,
+    )
+
+    html_cls, css_cls = _load_weasyprint()
+    base_url = _resolve_base_url(args)
+    stylesheets = _build_stylesheets(args, css_cls, page_css)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    html_cls(string=html_doc, base_url=base_url).write_pdf(
+        target=str(out_path), stylesheets=stylesheets
+    )
+    if args.verbose:
+        print(f"Wrote PDF to {out_path}")
+
+
+def _parse_markdown_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
         description="Convert Markdown files to a single PDF (WeasyPrint)"
     )
-    p.add_argument("OUTPUT", help="Output PDF path")
-    p.add_argument(
+    parser.add_argument("OUTPUT", help="Output PDF path")
+    parser.add_argument(
         "INPUTS", nargs="+", help="Markdown files and/or directories"
     )
-    p.add_argument(
+    parser.add_argument(
         "--paper-size", choices=sorted(PAPER_SIZES.keys()), default="letter"
     )
-    p.add_argument(
+    parser.add_argument(
         "--orientation", choices=["portrait", "landscape"], default="portrait"
     )
-    p.add_argument(
+    parser.add_argument(
         "--margin",
         dest="margin",
         help="CSS margin shorthand (e.g., '1in' or '1in 0.5in')",
     )
-    p.add_argument("--margin-top")
-    p.add_argument("--margin-right")
-    p.add_argument("--margin-bottom")
-    p.add_argument("--margin-left")
-    p.add_argument("--toc", dest="toc", action="store_true")
-    p.add_argument("--no-toc", dest="toc", action="store_false")
-    p.set_defaults(toc=False)
-    p.add_argument("--toc-depth", type=int, default=3)
-    p.add_argument("--title-page", action="store_true")
-    p.add_argument("--title")
-    p.add_argument("--subtitle")
-    p.add_argument("--author")
-    p.add_argument("--date")
-    p.add_argument("--title-template", dest="title_template")
-    p.add_argument("--ai-title", dest="ai_title", action="store_true")
-    p.add_argument("--ai-model", default="gpt-4o-mini")
-    p.add_argument("--ai-max-tokens", type=int, default=200)
-    p.add_argument("--ai-temperature", type=float, default=0.3)
-    p.add_argument("--css", dest="css")
-    p.add_argument("--highlight-style", default="default")
-    p.add_argument("--resources", help="Base path for images/assets")
-    p.add_argument("--extensions", nargs="*", default=[])
-    p.add_argument("--level-limit", type=int, default=0)
-    p.add_argument(
+    parser.add_argument("--margin-top")
+    parser.add_argument("--margin-right")
+    parser.add_argument("--margin-bottom")
+    parser.add_argument("--margin-left")
+    parser.add_argument("--toc", dest="toc", action="store_true")
+    parser.add_argument("--no-toc", dest="toc", action="store_false")
+    parser.set_defaults(toc=False)
+    parser.add_argument("--toc-depth", type=int, default=3)
+    parser.add_argument("--title-page", action="store_true")
+    parser.add_argument("--title")
+    parser.add_argument("--subtitle")
+    parser.add_argument("--author")
+    parser.add_argument("--date")
+    parser.add_argument("--title-template", dest="title_template")
+    parser.add_argument("--ai-title", dest="ai_title", action="store_true")
+    parser.add_argument("--ai-model", default="gpt-4o-mini")
+    parser.add_argument("--ai-max-tokens", type=int, default=200)
+    parser.add_argument("--ai-temperature", type=float, default=0.3)
+    parser.add_argument("--css", dest="css")
+    parser.add_argument("--highlight-style", default="default")
+    parser.add_argument("--resources", help="Base path for images/assets")
+    parser.add_argument("--extensions", nargs="*", default=[])
+    parser.add_argument("--level-limit", type=int, default=0)
+    parser.add_argument(
         "--sort",
         default="name",
         help="Sort by name|created|modified with optional '-' for desc",
     )
-    p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--verbose", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    return parser.parse_args(argv)
 
-    args = p.parse_args(argv)
 
-    out_path = Path(args.OUTPUT).expanduser().resolve()
+def _collect_markdown_inputs(args: argparse.Namespace) -> List[Path]:
     input_paths = [Path(s) for s in args.INPUTS]
     files = list(
         iter_markdown_files(
@@ -609,10 +641,12 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     files = sort_files(files, args.sort)
     if not files:
         raise SystemExit("No markdown files found in inputs")
+    return files
 
-    # Build CSS strings
+
+def _build_page_css_from_args(args: argparse.Namespace) -> str:
     try:
-        page_css = build_page_css(
+        return build_page_css(
             paper_size=args.paper_size,
             orientation=args.orientation,
             margin_shorthand=args.margin,
@@ -624,104 +658,97 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     except ValueError as exc:
         raise SystemExit(str(exc))
 
-    highlight_css = default_highlight_css(args.highlight_style)
 
-    # Prepare Markdown renderer
-    md = build_markdown_it(args.extensions)
-
-    # Render each file; collect headings per file for potential TOC
+def _render_markdown_parts(
+    files: Sequence[Path], md: MarkdownIt
+) -> Tuple[List[Tuple[str, str]], str]:
     used_slugs: Dict[str, int] = {}
     parts: List[Tuple[str, str]] = []
-    # Also capture a sample of text for optional AI title
-    sample_buf: List[str] = []
-    for f in files:
-        text = f.read_text(encoding="utf-8", errors="ignore")
-        sample_buf.append(text[:500])
+    samples: List[str] = []
+    for path in files:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        samples.append(text[:500])
         html, _heads = render_markdown_with_headings(md, text, used_slugs)
-        parts.append((f.stem, html))
+        parts.append((path.stem, html))
+    return parts, "\n\n".join(samples)
 
-    # Title page
-    title_html: Optional[str] = None
-    if args.title_page:
+
+def _build_title_page_html(
+    args: argparse.Namespace, sample_text: str
+) -> Optional[str]:
+    if not args.title_page:
+        return None
+    fields = TitleFields(
+        title=args.title or "",
+        subtitle=args.subtitle or "",
+        author=args.author or "",
+        date_str=(args.date or date.today().isoformat()),
+    )
+    if args.ai_title:
+        ai_fields = generate_ai_title_fields(
+            sample_text=sample_text,
+            model=args.ai_model,
+            max_tokens=args.ai_max_tokens,
+            temperature=args.ai_temperature,
+        )
         fields = TitleFields(
-            title=args.title or "",
-            subtitle=args.subtitle or "",
-            author=args.author or "",
-            date_str=(args.date or date.today().isoformat()),
+            title=fields.title or ai_fields.title,
+            subtitle=fields.subtitle or ai_fields.subtitle,
+            author=fields.author or ai_fields.author,
+            date_str=fields.date_str or ai_fields.date_str,
         )
-        if args.ai_title:
-            ai_fields = generate_ai_title_fields(
-                sample_text="\n\n".join(sample_buf),
-                model=args.ai_model,
-                max_tokens=args.ai_max_tokens,
-                temperature=args.ai_temperature,
-            )
-            # only fill missing fields
-            fields = TitleFields(
-                title=fields.title or ai_fields.title,
-                subtitle=fields.subtitle or ai_fields.subtitle,
-                author=fields.author or ai_fields.author,
-                date_str=fields.date_str or ai_fields.date_str,
-            )
-        tpl_path = (
-            Path(args.title_template).expanduser().resolve()
-            if args.title_template
-            else None
-        )
-        title_html = render_title_page(fields, tpl_path)
+    template_path = (
+        Path(args.title_template).expanduser().resolve()
+        if args.title_template
+        else None
+    )
+    return render_title_page(fields, template_path)
 
-    # Dry run output
-    if args.dry_run:
-        print("Planned output:")
-        print(f"- Output: {out_path}")
-        print(f"- Files ({len(files)}):")
-        for f in files:
-            print(f"  - {f}")
-        print(f"- Paper: {args.paper_size} {args.orientation}")
-        print(f"- TOC: {'on' if args.toc else 'off'} (depth {args.toc_depth})")
-        print(
-            "- Title page: "
-            f"{'on' if args.title_page else 'off'}"
-            f"{' + AI' if args.title_page and args.ai_title else ''}"
-        )
-        return
 
-    # Build HTML doc
-    html_doc = assemble_html(
-        parts,
-        include_toc=args.toc,
-        toc_depth=args.toc_depth,
-        highlight_css=highlight_css,
-        custom_css_href=args.css,
-        title_html=title_html,
+def _print_dry_run(
+    args: argparse.Namespace, files: Sequence[Path], out_path: Path
+) -> None:
+    print("Planned output:")
+    print(f"- Output: {out_path}")
+    print(f"- Files ({len(files)}):")
+    for path in files:
+        print(f"  - {path}")
+    print(f"- Paper: {args.paper_size} {args.orientation}")
+    print(f"- TOC: {'on' if args.toc else 'off'} (depth {args.toc_depth})")
+    print(
+        "- Title page: "
+        f"{'on' if args.title_page else 'off'}"
+        f"{' + AI' if args.title_page and args.ai_title else ''}"
     )
 
-    # Render PDF using WeasyPrint
+
+def _load_weasyprint() -> Tuple[Any, Any]:
     try:
         from weasyprint import HTML, CSS
+
+        return HTML, CSS
     except Exception:
         raise SystemExit(
             "WeasyPrint is required. Install system libraries (Cairo, Pango) "
             "and the 'weasyprint' package."
         )
 
-    base_url = (
-        Path(args.resources).expanduser().resolve().as_uri()
-        if args.resources
-        else Path.cwd().as_uri()
-    )
-    stylesheets = [CSS(string=page_css)]
+
+def _resolve_base_url(args: argparse.Namespace) -> str:
+    if args.resources:
+        return Path(args.resources).expanduser().resolve().as_uri()
+    return Path.cwd().as_uri()
+
+
+def _build_stylesheets(
+    args: argparse.Namespace, css_cls: Any, page_css: str
+) -> List[Any]:
+    stylesheets = [css_cls(string=page_css)]
     if args.css:
         stylesheets.append(
-            CSS(filename=str(Path(args.css).expanduser().resolve()))
+            css_cls(filename=str(Path(args.css).expanduser().resolve()))
         )
-
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    HTML(string=html_doc, base_url=base_url).write_pdf(
-        target=str(out_path), stylesheets=stylesheets
-    )
-    if args.verbose:
-        print(f"Wrote PDF to {out_path}")
+    return stylesheets
 
 
 if __name__ == "__main__":

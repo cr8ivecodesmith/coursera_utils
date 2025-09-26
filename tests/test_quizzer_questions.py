@@ -46,9 +46,7 @@ def test_ai_generate_mcqs_for_topic_parses_and_validates():
         assert q["type"] == "mcq"
         assert q["topic_id"] == "intro"
         keys = [c["key"] for c in q["choices"]]
-        assert all(
-            len(k) == 1 and k.isalpha() and k == k.upper() for k in keys
-        )
+        assert all(len(k) == 1 and k.isalpha() and k == k.upper() for k in keys)
         assert q["answer"] in set(keys)
 
 
