@@ -2,14 +2,24 @@ import re
 import json
 
 from pathlib import Path
-from typing import Optional, List, Sequence, Tuple, Set
+from typing import Optional, List, Sequence, Tuple
 
-try:  # optional: reuse existing OpenAI client loader
-    from ..transcribe_video import load_client  # type: ignore
-except Exception:  # pragma: no cover - fallback for legacy layout
+try:  # shared helpers for file discovery and AI access
+    from ..core import (
+        iter_text_files,
+        load_client,
+        parse_extensions,
+        read_text_file,
+    )  # type: ignore
+except Exception:  # pragma: no cover - fallback for alternate execution
     try:
-        from study_utils.transcribe_video import load_client  # type: ignore
-    except Exception:  # pragma: no cover
+        from study_utils.core import (
+            iter_text_files,
+            load_client,
+            parse_extensions,
+            read_text_file,
+        )  # type: ignore
+    except Exception:  # pragma: no cover - final fallback when unavailable
         load_client = None  # type: ignore
 
 
@@ -56,7 +66,7 @@ def _read_files(files: Sequence[Path]) -> List[Tuple[Path, str]]:
     out: List[Tuple[Path, str]] = []
     for p in files:
         try:
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = read_text_file(p)
         except Exception:
             text = ""
         out.append((p, text))
@@ -87,50 +97,16 @@ def iter_quiz_files(
     if level_limit < 0:
         raise ValueError("level_limit must be >= 0")
 
-    exts = {e.lower().lstrip(".") for e in extensions}
+    exts = parse_extensions(extensions, default=extensions)
     collected: List[Path] = []
     for raw_path in paths:
         path = Path(raw_path)
-        collected.extend(_collect_quiz_files_from_path(path, exts, level_limit))
-    return collected
-
-
-def _collect_quiz_files_from_path(
-    path: Path, extensions: Set[str], level_limit: int
-) -> List[Path]:
-    if not path.exists():
-        return []
-    if path.is_file():
-        return [path] if _matches_extension(path, extensions) else []
-    if not path.is_dir():
-        return []
-    return [
-        file
-        for file in _iter_directory_files(path, level_limit)
-        if _matches_extension(file, extensions)
-    ]
-
-
-def _matches_extension(path: Path, extensions: Set[str]) -> bool:
-    return path.is_file() and path.suffix.lower().lstrip(".") in extensions
-
-
-def _iter_directory_files(base: Path, level_limit: int) -> List[Path]:
-    files = sorted(
-        (child for child in base.rglob("*") if child.is_file()),
-        key=lambda x: x.name.lower(),
-    )
-    if level_limit == 0:
-        return files
-    limited: List[Path] = []
-    for child in files:
         try:
-            rel = child.relative_to(base)
-        except Exception:
+            matches = list(iter_text_files([path], exts, level_limit))
+        except FileNotFoundError:
             continue
-        if len(rel.parts) <= level_limit:
-            limited.append(child)
-    return limited
+        collected.extend(matches)
+    return collected
 
 
 def read_jsonl(path: Path) -> List[dict]:

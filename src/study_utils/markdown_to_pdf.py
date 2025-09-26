@@ -27,6 +27,11 @@ from jinja2 import Environment, FileSystemLoader, Template
 from markdown_it import MarkdownIt
 from pygments.formatters import HtmlFormatter
 
+try:
+    from .core import iter_text_files, parse_extensions  # type: ignore
+except Exception:  # pragma: no cover - fallback for alternate execution
+    from study_utils.core import iter_text_files, parse_extensions  # type: ignore
+
 
 # ------------- Types and constants -------------
 
@@ -52,35 +57,20 @@ class TitleFields:
 # ------------- Discovery -------------
 
 
-def _is_md(path: Path, exts: Sequence[str]) -> bool:
-    e = path.suffix.lower().lstrip(".")
-    return path.is_file() and e in {x.lower().lstrip(".") for x in exts}
-
-
 def iter_markdown_files(
     inputs: Sequence[Path],
     *,
     extensions: Sequence[str] = ("md", "markdown"),
     level_limit: int = 0,
 ) -> Iterator[Path]:
-    """Yield markdown files from the given file/dir inputs.
-
-    ``level_limit=0`` means unlimited recursion; positive values limit depth
-    relative to each starting directory.
-    """
-    for p in inputs:
-        p = p.expanduser().resolve()
-        if p.is_file() and _is_md(p, extensions):
-            yield p
-        elif p.is_dir():
-            base_depth = len(p.parts)
-            for child in sorted(p.rglob("*")):
-                if not child.is_file():
-                    continue
-                if level_limit and len(child.parts) - base_depth > level_limit:
-                    continue
-                if _is_md(child, extensions):
-                    yield child
+    """Yield markdown files from the given file/dir inputs."""
+    exts = parse_extensions(extensions, default=extensions)
+    for raw in inputs:
+        path = Path(raw).expanduser().resolve()
+        try:
+            yield from iter_text_files([path], exts, level_limit)
+        except FileNotFoundError:
+            continue
 
 
 def sort_files(files: Sequence[Path], key: str = "name") -> List[Path]:

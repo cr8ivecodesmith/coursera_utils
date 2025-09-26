@@ -22,16 +22,24 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 
-# Discovery utilities are shared with text_combiner for consistent behavior
+# Discovery utilities are shared via the core package for consistent behavior
 try:
-    from .text_combiner import iter_text_files, read_text_file  # type: ignore
-except Exception:  # pragma: no cover - fallback if relative import fails
-    from text_combiner import iter_text_files, read_text_file  # type: ignore
+    from .core import (
+        iter_text_files,
+        parse_extensions as core_parse_extensions,
+        read_text_file,
+    )  # type: ignore
+except Exception:  # pragma: no cover - fallback when executed differently
+    from study_utils.core import (  # type: ignore
+        iter_text_files,
+        parse_extensions as core_parse_extensions,
+        read_text_file,
+    )
 
 try:  # Prefer relative import for src/ layout
-    from .transcribe_video import load_client  # type: ignore
+    from .core import load_client  # type: ignore
 except Exception:  # pragma: no cover - fallback when executed differently
-    from study_utils.transcribe_video import load_client  # type: ignore
+    from study_utils.core import load_client  # type: ignore
 
 
 # -----------------------------
@@ -53,23 +61,8 @@ class GenerateOptions:
 
 
 def parse_extensions(values: Optional[Sequence[str]]) -> Set[str]:
-    """Normalize extension strings to a set without leading dots.
-
-    Defaults to markdown-friendly set: {"txt", "md", "markdown"}.
-    """
-    default = {"txt", "md", "markdown"}
-    if not values:
-        return default
-    out: Set[str] = set()
-    for v in values:
-        if not isinstance(v, str):
-            continue
-        s = v.strip().lower()
-        if s.startswith("."):
-            s = s[1:]
-        if s:
-            out.add(s)
-    return out or default
+    """Wrapper retaining legacy defaults while delegating normalization."""
+    return core_parse_extensions(values, default={"txt", "md", "markdown"})
 
 
 def find_config_path(arg: Optional[str]) -> Path:
@@ -305,7 +298,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     try:
         config_path = find_config_path(args.config)
-        extensions = parse_extensions(args.extensions)
+        extensions = parse_extensions(
+            args.extensions, default={"txt", "md", "markdown"}
+        )
         if args.level_limit < 0:
             raise ValueError("--level-limit must be >= 0")
     except Exception as exc:

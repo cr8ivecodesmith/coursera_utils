@@ -10,8 +10,8 @@ Features:
 - Composable filename prefixes (text and zero-padded counters).
 - Splits audio into ~10-minute mp3 chunks with pydub/ffmpeg, transcribes, and
   concatenates.
-- Environment-driven OpenAI client setup via `load_client()` with `.env`
-  support.
+- Environment-driven OpenAI client setup via `study_utils.core.load_client()`
+  with `.env` support.
 
 Design notes:
 - Argparse CLI with small, pure helpers for discovery, naming, and parsing.
@@ -30,25 +30,11 @@ import re
 from datetime import datetime, timezone
 from tempfile import gettempdir
 
-from dotenv import load_dotenv
 from openai import OpenAI
 from pydub import AudioSegment
 from pydub.utils import make_chunks
 
-
-def load_client() -> OpenAI:
-    """Initialize OpenAI client using environment variables.
-
-    Looks for `OPENAI_API_KEY`. Supports loading from a local `.env`.
-    """
-    # Load from a local .env if present
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY not found in environment. Set it or add to .env"
-        )
-    return OpenAI(api_key=api_key)
+from .core import load_client
 
 
 def find_video_files(target: Path, recursive: bool = False) -> List[Path]:

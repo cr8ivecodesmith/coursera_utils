@@ -20,18 +20,20 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, List, Optional, Sequence, Set
+from typing import Optional, Sequence, Set
 
+from .core import (
+    iter_text_files,
+    load_client,
+    order_files,
+    parse_extensions,
+    read_text_file,
+)
 
-# Reuse load_client from sibling transcribe_video to avoid duplicating
-# environment handling.
-try:  # prefer relative import for the src/ layout
-    from .transcribe_video import load_client  # type: ignore
-except Exception:  # pragma: no cover - fallback to top-level shim if present
-    try:
-        from study_utils.transcribe_video import load_client  # type: ignore
-    except Exception:  # final fallback when unavailable (AI titles disabled)
-        load_client = None  # type: ignore
+try:  # Optional dependency: openai may not be installed in local envs.
+    from openai import BadRequestError as OpenAIBadRequestError  # type: ignore
+except Exception:  # pragma: no cover - fallback when OpenAI SDK missing
+    OpenAIBadRequestError = Exception  # type: ignore[misc,assignment]
 
 
 # -----------------------------
@@ -59,27 +61,6 @@ class CombineOptions:
 # -----------------------------
 # Parsing helpers
 # -----------------------------
-
-
-def parse_extensions(values: Optional[Sequence[str]]) -> Set[str]:
-    """Normalize extension strings to lower-case values without leading dots.
-
-    Examples:
-    [".txt", "md"] -> {"txt", "md"}
-    None -> {"txt"}
-    """
-    if not values:
-        return {"txt"}
-    out: Set[str] = set()
-    for v in values:
-        if not isinstance(v, str):
-            continue
-        s = v.strip().lower()
-        if s.startswith("."):
-            s = s[1:]
-        if s:
-            out.add(s)
-    return out or {"txt"}
 
 
 def parse_order_by(value: Optional[str]) -> Optional[str]:
@@ -118,98 +99,6 @@ def parse_heading(value: Optional[str]) -> Optional[str]:
 
 
 # -----------------------------
-# Discovery and ordering
-# -----------------------------
-
-
-def _matches_extension(path: Path, extensions: Set[str]) -> bool:
-    return path.is_file() and path.suffix.lower().lstrip(".") in extensions
-
-
-def iter_text_files(
-    paths: Sequence[Path], extensions: Set[str], level_limit: int
-) -> Iterator[Path]:
-    """Yield matching files from given input paths, preserving input order.
-
-    - A matching file yields directly.
-    - A directory is traversed with an optional depth limit.
-      ``level_limit == 1`` includes only files directly under the directory.
-      ``level_limit == 2`` includes one subdirectory level, and so on.
-      ``0`` means no limit.
-    Files within a directory are yielded in ascending name order for
-    determinism.
-    """
-    if level_limit < 0:
-        raise ValueError("--level-limit must be >= 0")
-
-    for path in paths:
-        if path.is_file():
-            if _matches_extension(path, extensions):
-                yield path
-            continue
-        if not path.exists():
-            raise FileNotFoundError(f"Input not found: {path}")
-        if not path.is_dir():
-            continue
-        yield from _iter_text_directory(path, extensions, level_limit)
-
-
-def _iter_text_directory(
-    root: Path, extensions: Set[str], level_limit: int
-) -> Iterator[Path]:
-    for candidate in _sorted_directory_files(root):
-        if level_limit and not _within_level_limit(
-            candidate, root, level_limit
-        ):
-            continue
-        if _matches_extension(candidate, extensions):
-            yield candidate
-
-
-def _sorted_directory_files(root: Path) -> List[Path]:
-    return sorted(
-        (child for child in root.rglob("*") if child.is_file()),
-        key=lambda x: x.name.lower(),
-    )
-
-
-def _within_level_limit(path: Path, root: Path, level_limit: int) -> bool:
-    try:
-        rel = path.relative_to(root)
-    except Exception:
-        return False
-    return len(rel.parts) <= level_limit
-
-
-def order_files(files: Sequence[Path], order_by: Optional[str]) -> List[Path]:
-    """Order files by the requested attribute.
-
-    When order_by is None, preserves input order.
-    """
-    if not order_by:
-        return list(files)
-    reverse = order_by.startswith("-")
-    key = order_by.lstrip("-")
-
-    def keyfn(p: Path):
-        if key == "name":
-            return p.name.lower()
-        try:
-            st = p.stat()
-        except Exception:
-            # Put problematic files last
-            return float("inf")
-        if key == "created":
-            # st_ctime is best-effort across platforms
-            return getattr(st, "st_birthtime", None) or st.st_ctime
-        if key == "modified":
-            return st.st_mtime
-        return 0
-
-    return sorted(files, key=keyfn, reverse=reverse)
-
-
-# -----------------------------
 # Section title generation
 # -----------------------------
 
@@ -232,14 +121,10 @@ def _with_heading(text: str, heading: Optional[str]) -> str:
 
 
 def _ai_title_from_filename(path: Path) -> Optional[str]:
-    if load_client is None:
-        return None
     try:
         client = load_client()
     except Exception:
         return None
-    from openai import BadRequestError  # type: ignore
-
     prompt = (
         "Generate a concise section title (<= 80 chars) based only on this "
         "file name. Avoid quotes and punctuation-heavy output; return only "
@@ -264,20 +149,17 @@ def _ai_title_from_filename(path: Path) -> Optional[str]:
         title = (resp.choices[0].message.content or "").strip()
         title = re.sub(r"[\r\n]+", " ", title)
         return title[:120] if title else None
-    except BadRequestError:
+    except OpenAIBadRequestError:
         return None
     except Exception:
         return None
 
 
 def _ai_title_from_content(content: str, filename: str) -> Optional[str]:
-    if load_client is None:
-        return None
     try:
         client = load_client()
     except Exception:
         return None
-    from openai import BadRequestError  # type: ignore
 
     snippet = content[:4000]
     prompt = (
@@ -305,7 +187,7 @@ def _ai_title_from_content(content: str, filename: str) -> Optional[str]:
         title = (resp.choices[0].message.content or "").strip()
         title = re.sub(r"[\r\n]+", " ", title)
         return title[:120] if title else None
-    except BadRequestError:
+    except OpenAIBadRequestError:
         return None
     except Exception:
         return None
@@ -350,14 +232,6 @@ def make_section_title(
 # -----------------------------
 # Combining
 # -----------------------------
-
-
-def read_text_file(path: Path) -> str:
-    """Read a text file as UTF-8 with replacement for errors."""
-    with path.open("r", encoding="utf-8", errors="replace") as fh:
-        return fh.read()
-
-
 def combine_files(
     files: Sequence[Path],
     output_path: Path,
@@ -477,7 +351,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     input_paths = [Path(s).expanduser().resolve() for s in args.INPUTS]
 
     try:
-        extensions = parse_extensions(args.extensions)
+        extensions = parse_extensions(args.extensions, default={"txt"})
         order_by = parse_order_by(args.order_by)
         heading = parse_heading(args.section_title_heading)
     except Exception as exc:
