@@ -47,7 +47,7 @@
   - [x] Milestone 1 — Data home + config framework: implement data dir resolver, TOML loader, `study rag config` commands; working CLI build with existing tests and Ruff passing.
   - [x] Milestone 2 — Vector store ingestion & management: add chunker, embedding pipeline, DB manifest schema (embedding model, tokenizer, chunk sizes, checksums), list/export/import/delete commands with atomic writes and safe archive handling; ensure full test suite (new + existing) at 100% and Ruff clean.
   - [x] Milestone 3 — Chat runtime & sessions: build retrieval orchestration, `rich` chat loop, session persistence/resume with manifest compatibility checks and locking; verify working CLI build, all tests, Ruff lint.
-  - [ ] Milestone 4 — Polish & docs: finalize telemetry/logging, doctor command, docs updates, cross-platform permission handling, confirm 100% tests + Ruff, prep release notes.
+  - [x] Milestone 4 — Polish & docs: finalize telemetry/logging, doctor command, docs updates, cross-platform permission handling, confirm 100% tests + Ruff, prep release notes.
 
 ## Test Plan
 - Unit
@@ -78,6 +78,17 @@ Delivered Milestone 3 with the chat runtime, session persistence, and CLI integr
 - Added chat orchestration module with retrieval aggregation, OpenAI adapter, and rich-powered loop.
 - Implemented session store with locking plus CLI `chat` command for new/resumed conversations.
 - Introduced targeted tests covering sessions, runtime flows, and CLI usage while keeping coverage guidance intact.
+
+### 2025-10-02 09:45
+**Summary**
+Delivered Milestone 4 with shared logging/config utilities, diagnostics, and docs.
+**Changes**
+- Added reusable core logging helpers and integrated JSON file logging with
+  CLI overrides.
+- Added the `study rag doctor` command with environment checks, dependency
+  audit, and disk reports.
+- Extended tests for logging and doctor flows and refreshed CLI
+  documentation.
 
 ### 2025-09-29 09:30
 **Summary**

@@ -299,10 +299,13 @@ def test_load_config_rejects_empty_data_home_override(tmp_path):
         config_mod.load_config(explicit_path=target)
 
 
-def test_merge_dict_requires_table():
-    base = config_mod.default_tree()
+def test_merge_dict_requires_table(tmp_path):
+    # Replace the ingestion table with a scalar to trigger validation failure.
+    target = tmp_path / "bad-ingestion.toml"
+    target.write_text("ingestion = 5\n", encoding="utf-8")
+
     with pytest.raises(config_mod.ConfigError):
-        config_mod._merge_dict(base, {"ingestion": 5})
+        config_mod.load_config(explicit_path=target)
 
 
 def test_require_non_negative_int_rejects_negative():
@@ -418,14 +421,14 @@ def test_build_config_requires_logging_mapping():
 
 def test_load_toml_missing_file(tmp_path):
     with pytest.raises(config_mod.ConfigError):
-        config_mod._load_toml(tmp_path / "missing.toml")
+        config_mod.load_config(explicit_path=tmp_path / "missing.toml")
 
 
 def test_load_toml_bad_content(tmp_path):
     path = tmp_path / "bad.toml"
     path.write_text('x = "y"\n]', encoding="utf-8")
     with pytest.raises(config_mod.ConfigError):
-        config_mod._load_toml(path)
+        config_mod.load_config(explicit_path=path)
 
 
 def test_resolve_config_path_defaults_to_data_dir(tmp_path):
@@ -435,7 +438,7 @@ def test_resolve_config_path_defaults_to_data_dir(tmp_path):
 
 
 def test_load_config_requires_mapping_root(monkeypatch, tmp_path):
-    monkeypatch.setattr(config_mod, "_load_toml", lambda path: [])
+    monkeypatch.setattr(config_mod.core_config, "load_toml", lambda path: [])
     with pytest.raises(config_mod.ConfigError):
         config_mod.load_config(explicit_path=tmp_path / "fake.toml")
 

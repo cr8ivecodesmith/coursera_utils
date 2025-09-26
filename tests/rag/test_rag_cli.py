@@ -12,6 +12,7 @@ from study_utils.rag import cli as rag_cli
 from study_utils.rag import config as config_mod
 from study_utils.rag import vector_store
 from study_utils.rag import chat as chat_mod
+from study_utils.rag import doctor as doctor_mod
 
 
 class CLIStubEmbedder:
@@ -35,6 +36,33 @@ class CLIStubChatClient:
     ) -> str:
         self.calls.append([dict(item) for item in messages])
         return "CLI stub response"
+
+
+def _make_doctor_report():
+    return doctor_mod.DoctorReport(
+        data_home=Path("/tmp/home"),
+        data_home_severity="ok",
+        data_home_message=None,
+        env_overrides={},
+        directories=(
+            doctor_mod.DirectoryStatus(
+                name="config",
+                path=Path("/tmp/config"),
+                exists=True,
+                is_dir=True,
+                mode=0o700,
+                severity="ok",
+                message=None,
+            ),
+        ),
+        config_path=Path("/tmp/config/rag.toml"),
+        config_exists=True,
+        config_error=None,
+        dependencies=tuple(),
+        tokenizer=doctor_mod.TokenizerStatus("tok", "enc", "ok", None),
+        vector_stores=tuple(),
+        sessions=tuple(),
+    )
 
 
 @pytest.fixture()
@@ -588,7 +616,10 @@ def test_handle_chat_reports_question_error(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(chat_mod, "ChatRuntime", DummyRuntime)
 
     def return_session(self, resume_id=None, vector_dbs=()):  # noqa: D401, ANN001
-        return types.SimpleNamespace()
+        return types.SimpleNamespace(
+            session_id="session",
+            vector_dbs=tuple(vector_dbs),
+        )
 
     def raise_ask(self, sess, question):  # noqa: D401, ANN001
         raise chat_mod.ChatError("ask nope")
@@ -618,7 +649,10 @@ def test_handle_chat_invokes_interactive_loop(tmp_path, monkeypatch):
             super().__init__(*args, **kwargs)
 
     def return_session(self, resume_id=None, vector_dbs=()):  # noqa: D401, ANN001
-        return types.SimpleNamespace()
+        return types.SimpleNamespace(
+            session_id="session",
+            vector_dbs=tuple(vector_dbs),
+        )
 
     def interactive(self, sess, console=None):  # noqa: D401, ANN001
         called["interactive"] = True
@@ -648,3 +682,31 @@ def test_build_chat_client_uses_openai_settings(tmp_path, monkeypatch):
     assert captured["model"] == cfg.providers.openai.chat_model
     assert captured["temperature"] == cfg.providers.openai.temperature
     assert captured["api_base"] == cfg.providers.openai.api_base
+
+
+def test_doctor_command_success(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("STUDY_UTILS_DATA_HOME", str(tmp_path / "data"))
+    report = _make_doctor_report()
+    monkeypatch.setattr(doctor_mod, "generate_report", lambda: report)
+    monkeypatch.setattr(doctor_mod, "format_report", lambda r: "doctor ok")
+    monkeypatch.setattr(doctor_mod, "has_errors", lambda r: False)
+
+    exit_code = rag_cli.main(["doctor"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "doctor ok" in output
+
+
+def test_doctor_command_reports_failure(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("STUDY_UTILS_DATA_HOME", str(tmp_path / "data"))
+    report = _make_doctor_report()
+    monkeypatch.setattr(doctor_mod, "generate_report", lambda: report)
+    monkeypatch.setattr(doctor_mod, "format_report", lambda r: "doctor bad")
+    monkeypatch.setattr(doctor_mod, "has_errors", lambda r: True)
+
+    exit_code = rag_cli.main(["doctor"])
+
+    assert exit_code == 1
+    output = capsys.readouterr().out
+    assert "doctor bad" in output

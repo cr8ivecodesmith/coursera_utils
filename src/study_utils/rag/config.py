@@ -11,12 +11,9 @@ import copy
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
-try:  # Python 3.11+
-    import tomllib
-except ModuleNotFoundError as exc:  # pragma: no cover - should never happen
-    raise RuntimeError("Python 3.11+ required for tomllib support") from exc
+from study_utils.core import config as core_config
 
 from . import data_dir
 
@@ -109,35 +106,6 @@ class RagConfig:
         if self.paths.data_home_override is not None:
             return self.paths.data_home_override
         return data_dir.get_data_home(create=False)
-
-
-def _deepcopy_defaults() -> Dict[str, Any]:
-    return copy.deepcopy(_DEFAULTS)
-
-
-def _merge_dict(
-    base: MutableMapping[str, Any],
-    override: Mapping[str, Any],
-    *,
-    path: str = "",
-) -> None:
-    for key, value in override.items():
-        if key not in base:
-            dotted = f"{path}{key}" if path else key
-            raise ConfigError(f"Unknown configuration key '{dotted}'.")
-        base_value = base[key]
-        if isinstance(base_value, MutableMapping):
-            if not isinstance(value, Mapping):
-                dotted = f"{path}{key}" if path else key
-                raise ConfigError(
-                    "Expected table for '{0}', found {1}.".format(
-                        dotted,
-                        type(value).__name__,
-                    )
-                )
-            _merge_dict(base_value, value, path=f"{path}{key}.")
-        else:
-            base[key] = value
 
 
 def _require_positive_int(value: Any, *, field: str) -> int:
@@ -421,16 +389,6 @@ def _build_config(tree: Mapping[str, Any]) -> RagConfig:
     )
 
 
-def _load_toml(path: Path) -> Mapping[str, Any]:
-    try:
-        with path.open("rb") as fh:
-            return tomllib.load(fh)
-    except FileNotFoundError as exc:
-        raise ConfigError(f"Config file not found: {path}") from exc
-    except tomllib.TOMLDecodeError as exc:
-        raise ConfigError(f"Failed to parse config TOML: {exc}") from exc
-
-
 def resolve_config_path(
     *,
     explicit_path: Optional[Path] = None,
@@ -453,18 +411,24 @@ def load_config(
     """Load the TOML config, applying defaults and validation."""
 
     path = resolve_config_path(explicit_path=explicit_path, env=env)
-    tree = _deepcopy_defaults()
-    toml_data = _load_toml(path)
+    tree = copy.deepcopy(_DEFAULTS)
+    try:
+        toml_data = core_config.load_toml(path)
+    except core_config.TomlConfigError as exc:
+        raise ConfigError(str(exc)) from exc
     if not isinstance(toml_data, Mapping):
         raise ConfigError("Config TOML must contain a table at the root.")
-    _merge_dict(tree, toml_data)
+    try:
+        core_config.merge_defaults(tree, toml_data)
+    except core_config.TomlConfigError as exc:
+        raise ConfigError(str(exc)) from exc
     return _build_config(tree)
 
 
 def default_tree() -> Dict[str, Any]:
     """Return a copy of the default configuration tree."""
 
-    return _deepcopy_defaults()
+    return copy.deepcopy(_DEFAULTS)
 
 
 def config_template() -> str:
@@ -484,17 +448,15 @@ def write_template(
         mode: File permission bitmask to apply when supported.
     """
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists() and not overwrite:
-        raise ConfigError(f"Config already exists: {path}")
-    with path.open("w", encoding="utf-8") as fh:
-        fh.write(config_template())
     try:
-        path.chmod(mode)
-    except PermissionError:
-        # Non-fatal: best-effort on systems that honour POSIX permissions.
-        pass
-    return path
+        return core_config.write_toml_template(
+            path,
+            template=config_template(),
+            overwrite=overwrite,
+            mode=mode,
+        )
+    except core_config.TomlConfigError as exc:
+        raise ConfigError(str(exc)) from exc
 
 
 _DEFAULTS: Dict[str, Any] = {
