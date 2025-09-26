@@ -27,8 +27,8 @@
   - Add tests that patch the tool `main` functions to assert call semantics and error handling for unknown commands.  
   - *Tests*: extend CLI test suite to cover dispatch paths.
 
-- [ ] **Packaging Updates**  
-  - Replace `[project.scripts]` entries with `study` and `markdown-to-pdf`; drop legacy script names.  
+- [x] **Packaging Updates**  
+  - Replace `[project.scripts]` entries with the unified `study` command and drop all legacy script names.  
   - Remove or adapt existing tests referencing old console scripts.  
   - *Tests*: run CLI unit suite and any packaging-related checks (e.g., `uv run pytest`).
 
@@ -38,7 +38,7 @@
   - *Tests*: spell-check/docs lint if available (manual review otherwise).
 
 ## Tests
-- [ ] CLI unit tests (`pytest`) validating new behavior.
+- [x] CLI unit tests (`pytest`) validating new behavior.
 - [ ] Integration/regression tests (N/A unless a higher-level CLI invocation test is added).
 
 ## History
@@ -50,3 +50,8 @@
 **Summary**
 - Wired `study` subcommand dispatch to forward args/exit codes to tool `main` functions and enforce passthrough semantics.
 - Expanded `tests/test_cli.py` with handler stubs covering success, SystemExit variants, and edge cases so coverage stays at 100%.
+
+### 2025-09-26 15:46 UTC
+**Summary**
+- Updated packaging to expose only the unified `study` console script in `pyproject.toml`, removing the legacy entries.
+- Confirmed CLI unit suite (`uv run pytest`) still passes with 100% coverage after the packaging change.

@@ -38,10 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-transcribe-video = "study_utils.transcribe_video:main"
-text-combiner = "study_utils.text_combiner:main"
-generate-document = "study_utils.generate_document:main"
-quizzer = "study_utils.quizzer._main:main"
+study = "study_utils.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
