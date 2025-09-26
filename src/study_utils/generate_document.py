@@ -19,7 +19,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 
 # Discovery utilities are shared via the core package for consistent behavior
@@ -60,9 +60,13 @@ class GenerateOptions:
 # -----------------------------
 
 
-def parse_extensions(values: Optional[Sequence[str]]) -> Set[str]:
-    """Wrapper retaining legacy defaults while delegating normalization."""
-    return core_parse_extensions(values, default={"txt", "md", "markdown"})
+def parse_extensions(
+    values: Optional[Sequence[str]],
+    default: Optional[Iterable[str]] = None,
+) -> Set[str]:
+    """Normalize extensions while preserving historical defaults."""
+    fallback = default or {"txt", "md", "markdown"}
+    return core_parse_extensions(values, default=fallback)
 
 
 def find_config_path(arg: Optional[str]) -> Path:
