@@ -1,5 +1,4 @@
-Text Combiner Spec
-===
+# Text Combiner Spec
 
 ## **Sources**
 

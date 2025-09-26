@@ -1,5 +1,4 @@
-Quizzer Spec
-===
+# Quizzer Spec
 
 ## **Sources**
 

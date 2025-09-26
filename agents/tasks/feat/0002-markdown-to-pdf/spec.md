@@ -1,5 +1,4 @@
-Markdown to PDF
-===
+# Markdown to PDF
 
 ## **Sources**
 

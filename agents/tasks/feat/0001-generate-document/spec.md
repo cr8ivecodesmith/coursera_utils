@@ -1,5 +1,4 @@
-Generate Document Spec
-===
+# Generate Document Spec
 
 ## **Sources**
 
