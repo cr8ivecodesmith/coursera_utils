@@ -45,7 +45,7 @@
 - Leverage dependency injection seams from `engineering-guide.md` by passing provider adapters and storage paths explicitly (facilitates testing with in-memory mocks).
 - Stepwise checklist:
   - [x] Milestone 1 — Data home + config framework: implement data dir resolver, TOML loader, `study rag config` commands; working CLI build with existing tests and Ruff passing.
-  - [ ] Milestone 2 — Vector store ingestion & management: add chunker, embedding pipeline, DB manifest schema (embedding model, tokenizer, chunk sizes, checksums), list/export/import/delete commands with atomic writes and safe archive handling; ensure full test suite (new + existing) at 100% and Ruff clean.
+  - [x] Milestone 2 — Vector store ingestion & management: add chunker, embedding pipeline, DB manifest schema (embedding model, tokenizer, chunk sizes, checksums), list/export/import/delete commands with atomic writes and safe archive handling; ensure full test suite (new + existing) at 100% and Ruff clean.
   - [ ] Milestone 3 — Chat runtime & sessions: build retrieval orchestration, `rich` chat loop, session persistence/resume with manifest compatibility checks and locking; verify working CLI build, all tests, Ruff lint.
   - [ ] Milestone 4 — Polish & docs: finalize telemetry/logging, doctor command, docs updates, cross-platform permission handling, confirm 100% tests + Ruff, prep release notes.
 
@@ -71,6 +71,14 @@
 - Extend existing runbook with instructions for clearing caches, exporting/importing DBs, and recovering sessions.
 
 ## History
+### 2025-09-28 14:10
+**Summary**
+Delivered Milestone 2: ingestion pipeline, vector store management commands, and supporting tests.
+**Changes**
+- Implemented chunking/dedup pipeline with OpenAI embedding adapter plus manifest writer.
+- Added FAISS/in-memory vector store backends with repository export/import/delete capabilities.
+- Extended `study rag` CLI with ingest/list/export/import/delete commands and comprehensive tests (coverage 100%).
+
 ### 2025-09-27 12:45
 **Summary**
 Delivered Milestone 1: data directory utilities, config loader/template, and `study rag config` CLI with full lint/test pass.
