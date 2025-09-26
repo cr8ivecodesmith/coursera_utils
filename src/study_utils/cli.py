@@ -64,6 +64,16 @@ _COMMAND_SPECS: Sequence[CommandSpec] = (
         ),
     ),
     CommandSpec(
+        name="rag",
+        summary="Interact with the retrieval-augmented study workspace.",
+        handler=lambda argv: _run_module_command(
+            "study_utils.rag.cli",
+            "main",
+            "study rag",
+            argv,
+        ),
+    ),
+    CommandSpec(
         name="quizzer",
         summary="Launch the interactive quizzer TUI.",
         is_tui=True,

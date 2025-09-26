@@ -44,7 +44,7 @@
 - Favor composition: separate ingestion pipeline, vector store abstraction, and chat runtime per `patterns-and-architecture.md` guidance.
 - Leverage dependency injection seams from `engineering-guide.md` by passing provider adapters and storage paths explicitly (facilitates testing with in-memory mocks).
 - Stepwise checklist:
-  - [ ] Milestone 1 — Data home + config framework: implement data dir resolver, TOML loader, `study rag config` commands; working CLI build with existing tests and Ruff passing.
+  - [x] Milestone 1 — Data home + config framework: implement data dir resolver, TOML loader, `study rag config` commands; working CLI build with existing tests and Ruff passing.
   - [ ] Milestone 2 — Vector store ingestion & management: add chunker, embedding pipeline, DB manifest schema (embedding model, tokenizer, chunk sizes, checksums), list/export/import/delete commands with atomic writes and safe archive handling; ensure full test suite (new + existing) at 100% and Ruff clean.
   - [ ] Milestone 3 — Chat runtime & sessions: build retrieval orchestration, `rich` chat loop, session persistence/resume with manifest compatibility checks and locking; verify working CLI build, all tests, Ruff lint.
   - [ ] Milestone 4 — Polish & docs: finalize telemetry/logging, doctor command, docs updates, cross-platform permission handling, confirm 100% tests + Ruff, prep release notes.
@@ -71,6 +71,14 @@
 - Extend existing runbook with instructions for clearing caches, exporting/importing DBs, and recovering sessions.
 
 ## History
+### 2025-09-27 12:45
+**Summary**
+Delivered Milestone 1: data directory utilities, config loader/template, and `study rag config` CLI with full lint/test pass.
+**Changes**
+- Implemented data home resolver honoring `STUDY_UTILS_DATA_HOME` plus permissions setup.
+- Added typed config schema, TOML loader, and template generator wired into `study rag config` commands.
+- Registered `study rag` CLI entry point and added unit/CLI tests ensuring pytest coverage and Ruff success.
+
 ### 2025-09-27 00:17
 **Summary**
 Drafted implementation plan for Study RAG tool.
