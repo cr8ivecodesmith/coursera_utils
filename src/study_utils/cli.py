@@ -106,7 +106,7 @@ def format_usage() -> str:
 
     parts = [
         "Usage: study <command> [args...]",
-        "Run `study list` to see all commands or `study help <command>` for more detail.",
+        "Run `study list` for commands or `study help <name>` for details.",
         "",
         format_command_table(),
     ]

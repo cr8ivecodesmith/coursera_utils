@@ -32,7 +32,7 @@
   - Remove or adapt existing tests referencing old console scripts.  
   - *Tests*: run CLI unit suite and any packaging-related checks (e.g., `uv run pytest`).
 
-- [ ] **Documentation Refresh**  
+- [x] **Documentation Refresh**  
   - Update README CLI section with `study` usage examples and note the consolidation.  
   - Ensure no references to removed scripts remain.  
   - *Tests*: spell-check/docs lint if available (manual review otherwise).
@@ -55,3 +55,7 @@
 **Summary**
 - Updated packaging to expose only the unified `study` console script in `pyproject.toml`, removing the legacy entries.
 - Confirmed CLI unit suite (`uv run pytest`) still passes with 100% coverage after the packaging change.
+
+### 2025-09-26 15:55 UTC
+**Summary**
+- Refreshed `README.md` to document the unified `study` CLI, updated command examples, and removed references to direct module execution.
