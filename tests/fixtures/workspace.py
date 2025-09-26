@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Mapping, MutableMapping, Union
+from typing import Iterator, Mapping, Union
 
 TreeValue = Union[str, bytes, "Tree", None]
 Tree = Mapping[str, TreeValue]

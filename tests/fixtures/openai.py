@@ -8,7 +8,7 @@ requests and queue deterministic responses.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import ModuleType, SimpleNamespace
 from typing import Any, Callable, Dict, List, Optional
 
