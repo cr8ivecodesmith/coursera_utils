@@ -22,7 +22,7 @@
   - Introduce unit tests for usage rendering, `list`, `help`, and `--version` using mocks where needed.  
   - *Tests*: new `tests/test_cli.py` covering the above behaviors.
 
-- [ ] **Subcommand Dispatch Wiring**  
+- [x] **Subcommand Dispatch Wiring**  
   - Implement dispatch logic that forwards argv to each tool’s `main`, handling exit codes and `--` passthrough.  
   - Add tests that patch the tool `main` functions to assert call semantics and error handling for unknown commands.  
   - *Tests*: extend CLI test suite to cover dispatch paths.
@@ -45,3 +45,8 @@
 ### 2025-02-14 hh:mm
 **Summary**
 - Created initial CLI skeleton with usage/list/help/version handling and added unit coverage in `tests/test_cli.py`.
+
+### 2025-09-26 15:37 UTC
+**Summary**
+- Wired `study` subcommand dispatch to forward args/exit codes to tool `main` functions and enforce passthrough semantics.
+- Expanded `tests/test_cli.py` with handler stubs covering success, SystemExit variants, and edge cases so coverage stays at 100%.
