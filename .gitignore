@@ -36,5 +36,6 @@ next_steps.md
 out/
 
 .envrc
+.codexenv-local
 
 coverage.xml

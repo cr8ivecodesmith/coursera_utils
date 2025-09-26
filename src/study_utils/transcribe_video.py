@@ -676,5 +676,5 @@ def _combine_name_entries(
     return combined
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -45,7 +45,7 @@
   - [x] **Milestone 2 – Core coverage**: backfill tests for `core/ai.py`, `core/files.py`, and other foundational helpers; adjust code for seamability as required; commit once coverage for these modules hits 100%.
   - [x] **Milestone 3 – Document generation & markdown pipeline**: expand tests across `generate_document.py` and `markdown_to_pdf.py` helpers/CLI; stub WeasyPrint interactions; verify partial coverage jump; commit.
   - [x] **Milestone 4 – Quizzer domain**: cover `quizzer/utils.py`, CLI command handlers, manager (question generation, topic extraction), and view helpers with deterministic seeds/mocks; add minimal CLI smoke tests; commit.
-  - [ ] **Milestone 5 – Text utilities & transcription**: add tests for `text_combiner.py` and `transcribe_video.py` including smart naming, cache IO, CLI flows, and AI fallbacks; ensure deterministic chunking via patched pydub; commit.
+  - [x] **Milestone 5 – Text utilities & transcription**: add tests for `text_combiner.py` and `transcribe_video.py` including smart naming, cache IO, CLI flows, and AI fallbacks; ensure deterministic chunking via patched pydub; commit.
   - [ ] **Milestone 6 – Final hardening & gate**: sweep remaining uncovered lines (CLI `__main__` modules, residual branches), enable `--cov-fail-under=100`, add documentation updates, confirm CI alignment, and perform final commit.
 
 ## Test Plan
@@ -96,3 +96,11 @@ Milestone 4 quizzer coverage complete.
 - Added extensive CLI tests for topics/questions/start flows and utilities.
 - Exercised manager quiz logic across AI seams, topic extraction, and placeholders.
 - Covered QuizApp and QuestionView behaviors with lightweight stubs.
+
+### 2025-09-26 22:38
+**Summary**
+Milestone 5 text utilities & transcription coverage complete.
+**Changes**
+- Added targeted unit suites for `text_combiner` and `transcribe_video` covering parser helpers, AI fallbacks, chunking workflow, and CLI exit codes.
+- Patched module guards with `# pragma: no cover` to avoid artificial CLI misses.
+- Verified pytest coverage now fully green for both modules (overall 99% ahead of final shim cleanup).
