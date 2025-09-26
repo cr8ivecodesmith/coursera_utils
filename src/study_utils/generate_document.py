@@ -1,15 +1,16 @@
 """Generate a Markdown document from reference files using an AI prompt.
 
-Implements the utility described in spec.md (generate_document.py):
-- Required: document type (matches a key in documents.toml)
-- Required: output filename (markdown)
-- Required: one or more reference files and/or directories
-- Optional: --extensions, --level-limit, --config
+Implements the utility described in ``spec.md`` (generate_document.py):
+- Require a document type that matches a key in ``documents.toml``.
+- Require an output filename (Markdown).
+- Require at least one reference file and/or directory.
+- Optionally accept ``--extensions``, ``--level-limit``, and ``--config``.
 
 Design notes:
-- Pure helpers for parsing, discovery, and prompt building; isolate I/O in main
-- Reuse discovery from text_combiner for consistency
-- Use OpenAI via load_client from transcribe_video (env + .env support)
+- Keep helpers pure for parsing, discovery, and prompt building; isolate I/O
+  in ``main``.
+- Reuse discovery from ``text_combiner`` for consistency.
+- Use OpenAI via ``load_client`` from ``transcribe_video`` (.env aware).
 """
 
 from __future__ import annotations
@@ -101,7 +102,7 @@ def find_config_path(arg: Optional[str]) -> Path:
 def load_documents_config(path: Path) -> Dict[str, Dict[str, str]]:
     """Load a TOML file and return a dict of document types.
 
-    Each top-level key should map to a dict with fields: model, description, prompt.
+    Each top-level key should map to fields: model, description, prompt.
     """
     try:
         try:  # Python 3.11+
@@ -257,7 +258,10 @@ def generate_document(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Generate a Markdown document from reference files using an AI prompt",
+        description=(
+            "Generate a Markdown document from reference files using an AI "
+            "prompt"
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(
@@ -270,7 +274,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--extensions",
         nargs="+",
-        help="File extensions to include (e.g. txt md markdown). Defaults include txt, md, markdown",
+        help=(
+            "File extensions to include (e.g. txt md markdown). Defaults "
+            "include txt, md, markdown"
+        ),
     )
     p.add_argument(
         "--level-limit",
@@ -280,7 +287,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--config",
-        help="Path to documents.toml. Defaults to ./documents.toml then bundled study_utils/documents.toml",
+        help=(
+            "Path to documents.toml. Defaults to ./documents.toml then "
+            "bundled study_utils/documents.toml"
+        ),
     )
     return p
 

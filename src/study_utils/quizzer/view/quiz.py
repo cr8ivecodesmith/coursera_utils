@@ -219,7 +219,7 @@ class QuizApp(App):
 
 
 class QuestionView(Widget):
-    """A simple view that renders a single MCQ with choices, progress and status."""
+    """Render a single MCQ with choices, progress, and status."""
 
     def __init__(
         self,

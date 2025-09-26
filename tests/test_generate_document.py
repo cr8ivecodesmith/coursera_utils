@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import study_utils.generate_document as gd
 
@@ -30,27 +31,23 @@ def test_generate_document_writes_output_with_stubbed_client(
     b.write_text("Beta content")
 
     # Stub load_client to avoid env and network
-    class _Msg:
-        def __init__(self, content: str):
-            self.content = content
-
-    class _Choice:
-        def __init__(self, content: str):
-            self.message = _Msg(content)
-
-    class _Resp:
-        def __init__(self, content: str):
-            self.choices = [_Choice(content)]
-
     class FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    # Return fixed markdown so we can assert output
-                    return _Resp("# Result\n\nGenerated.")
+        def __init__(self, response_text: str):
+            message = SimpleNamespace(content=response_text)
+            choice = SimpleNamespace(message=message)
+            result = SimpleNamespace(choices=[choice])
 
-    monkeypatch.setattr(gd, "load_client", lambda: FakeClient())
+            def create(**kwargs):
+                return result
+
+            completions = SimpleNamespace(create=create)
+            self.chat = SimpleNamespace(completions=completions)
+
+    monkeypatch.setattr(
+        gd,
+        "load_client",
+        lambda: FakeClient("# Result\n\nGenerated."),
+    )
 
     out = tmp_path / "out.md"
     used = gd.generate_document(
@@ -108,4 +105,6 @@ def test_generate_document_no_matching_files_raises(
     except FileNotFoundError as e:
         assert "No matching reference files" in str(e)
     else:
-        raise AssertionError("Expected FileNotFoundError when no files matched")
+        raise AssertionError(
+            "Expected FileNotFoundError when no files matched"
+        )

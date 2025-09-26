@@ -1,6 +1,7 @@
 import sys
 import types
 from pathlib import Path
+from types import SimpleNamespace
 
 # Ensure project root is importable
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,18 +15,19 @@ addtl_paths = (i for i in addtl_paths if str(i) not in sys.path)
 for i in addtl_paths:
     sys.path.insert(0, str(i))
 
-# Stub out heavy/optional deps at import time so tests can import transcribe_video
+# Stub out heavy/optional deps at import time so tests can import
+# transcribe_video
 if "pydub" not in sys.modules:
     pydub = types.ModuleType("pydub")
 
-    class _AudioSegment:
+    class AudioSegmentStub:
         @classmethod
         def from_file(cls, *a, **k):
             raise RuntimeError(
                 "AudioSegment.from_file should be stubbed in tests that use it"
             )
 
-    pydub.AudioSegment = _AudioSegment
+    pydub.AudioSegment = AudioSegmentStub
     sys.modules["pydub"] = pydub
 if "pydub.utils" not in sys.modules:
     utils = types.ModuleType("pydub.utils")
@@ -41,22 +43,12 @@ if "openai" not in sys.modules:
 
     class OpenAI:
         def __init__(self, *a, **k):
-            pass
+            def create(**kwargs):
+                choice = SimpleNamespace(message=SimpleNamespace(content=""))
+                return SimpleNamespace(choices=[choice])
 
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    class _Resp:
-                        class _Choice:
-                            class _Msg:
-                                content = ""
-
-                            message = _Msg()
-
-                        choices = [_Choice()]
-
-                    return _Resp()
+            completions = SimpleNamespace(create=create)
+            self.chat = SimpleNamespace(completions=completions)
 
     openai.OpenAI = OpenAI
     sys.modules["openai"] = openai

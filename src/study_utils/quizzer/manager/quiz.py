@@ -147,7 +147,8 @@ def generate_questions(
 ) -> List[Dict[str, object]]:
     """Generate a question bank from topics.
 
-    Calls AI generation per topic and concatenates results. For now only mcq is supported.
+    Call AI generation per topic and concatenate results. For now only MCQ is
+    supported.
     """
     if qtype != "mcq" or per_topic <= 0:
         return []
@@ -158,7 +159,8 @@ def generate_questions(
             t, n=per_topic, client=client, seed=seed, context=context
         )
         if ensure_coverage and not qs:
-            stem = f"Which of the following relates to {t.get('name', t.get('id', 'this topic'))}?"
+            topic_label = t.get("name", t.get("id", "this topic"))
+            stem = f"Which of the following relates to {topic_label}?"
             placeholder = {
                 "id": f"{t.get('id')}-ph-1",
                 "topic_id": str(t.get("id")),
@@ -183,7 +185,8 @@ def generate_questions(
 def validate_mcq(q: Dict[str, object]) -> None:
     """Validate an MCQ question dict.
 
-    Required keys: id, topic_id, type=='mcq', stem, choices(list of {key,text}), answer(str), explanation(str)
+    Required keys: id, topic_id, type=='mcq', stem, choices (list of
+    {key,text}), answer (str), explanation (str).
     - choices keys must be unique, 2–6 options, keys like 'A'..'F'
     - exactly one answer and it must be among choices
     Raises ValueError with actionable messages when invalid.
@@ -224,7 +227,8 @@ def ai_generate_mcqs_for_topic(
 ) -> List[Dict[str, object]]:
     """Generate n MCQ questions for a topic using an AI model.
 
-    Returns up to n validated MCQ dicts with normalized shape. Invalid items are skipped.
+    Return up to ``n`` validated MCQ dicts with normalized shape. Invalid items
+    are skipped.
     """
     if n <= 0:
         return []
@@ -236,7 +240,10 @@ def ai_generate_mcqs_for_topic(
     if client is None:
         return []
 
-    topic_id = str(topic.get("id") or _slugify(str(topic.get("name", "topic"))))
+    topic_id = str(
+        topic.get("id")
+        or _slugify(str(topic.get("name", "topic")))
+    )
     topic_name = str(topic.get("name") or topic_id)
     sys_prompt = "You generate high-quality multiple-choice study questions."
     ctx_block = (
@@ -244,17 +251,25 @@ def ai_generate_mcqs_for_topic(
         if isinstance(context, str) and context.strip()
         else ""
     )
+    base_instructions = (
+        prompt
+        or "Create concise multiple-choice questions covering the topic. "
+        "Output a JSON array of objects."
+    )
+    schema_line = (
+        '{"stem": str, "choices": [str or {"key": "A", "text": str}], '
+        '"answer": str, "explanation": str}\n'
+    )
+    constraints = (
+        "Constraints: single correct answer; plausible distractors; avoid "
+        "ambiguity; keep stems under 200 chars."
+    )
     user_prompt = (
-        (
-            prompt
-            or "Create concise multiple-choice questions covering the topic. Output JSON array of objects."
-        )
-        + "\n\nSchema:\n"
-        + '{"stem": str, "choices": [str or {"key": "A", "text": str}], "answer": str, "explanation": str}\n'
-        + f"Topic: {topic_name}\n"
-        + f"Count: {n}\n"
-        + "Constraints: single correct answer; plausible distractors; avoid ambiguity; keep stems under 200 chars."
-        + ctx_block
+        f"{base_instructions}\n\nSchema:\n{schema_line}"
+        f"Topic: {topic_name}\n"
+        f"Count: {n}\n"
+        f"{constraints}"
+        f"{ctx_block}"
     )
     try:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
@@ -266,9 +281,8 @@ def ai_generate_mcqs_for_topic(
             temperature=temperature,
             max_tokens=800,
         )
-        content = (
-            (resp.choices[0].message.content or "").strip().replace("\n", "")
-        )  # type: ignore[index]
+        raw_content = resp.choices[0].message.content  # type: ignore[index]
+        content = (raw_content or "").strip().replace("\n", "")
     except Exception:
         return []
 
@@ -318,9 +332,12 @@ def ai_generate_mcqs_for_topic(
                         answer = c["key"]
                         break
         explanation = str(rec.get("explanation", "")).strip()
+        generated_id = (
+            f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-"
+            f"{len(items)}"
+        )
         q = {
-            "id": rec.get("id")
-            or f"{topic_id}-{random.Random(seed).randint(10000, 99999)}-{len(items)}",
+            "id": rec.get("id") or generated_id,
             "topic_id": topic_id,
             "type": "mcq",
             "stem": stem,
@@ -371,14 +388,12 @@ def ai_extract_topics(
         snippet = [ln for ln in snippet if ln.strip()][:source_max_lines]
         joined = "\n".join(snippet[:source_max_lines_chars])
         parts.append(f"File: {path.name}\n{joined}\n")
-    user_prompt = (
-        (
-            prompt
-            or "Suggest concise study topics from the following notes. Output JSON array of objects with name and optional description."
-        )
-        + "\n\n"
-        + "\n\n".join(parts)
+    base_prompt = (
+        prompt
+        or "Suggest concise study topics from the following notes. "
+        "Output a JSON array of objects with name and optional description."
     )
+    user_prompt = base_prompt + "\n\n" + "\n\n".join(parts)
 
     try:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
@@ -386,18 +401,22 @@ def ai_extract_topics(
             messages=[
                 {
                     "role": "system",
-                    "content": "You extract clean, deduplicated topic names from text.",
+                    "content": (
+                        "You extract clean, deduplicated topic names."
+                    ),
                 },
                 {"role": "user", "content": user_prompt},
             ],
             temperature=temperature,
             max_tokens=600,
         )
-        content = (resp.choices[0].message.content or "").strip()  # type: ignore[index]
+        raw_content = resp.choices[0].message.content  # type: ignore[index]
+        content = (raw_content or "").strip()
     except Exception:
         return []
 
-    # Parse JSON output: accept ["Topic", ...] or [{"name": "...", "description": "..."}, ...]
+    # Parse JSON output: accept ["Topic", ...] or
+    # [{"name": "...", "description": "..."}, ...]
     suggestions: List[Dict[str, object]] = []
     try:
         data = json.loads(content)
@@ -473,9 +492,14 @@ def extract_topics(
                 continue
             slug = _slugify(name)
             if slug in topics:
-                sp = set(topics[slug].get("source_paths", []))  # type: ignore[assignment]
-                sp.add(str(path))
-                topics[slug]["source_paths"] = sorted(sp)
+                existing_paths = topics[slug].get("source_paths", [])
+                path_set = (
+                    {str(p) for p in existing_paths}
+                    if isinstance(existing_paths, list)
+                    else set()
+                )
+                path_set.add(str(path))
+                topics[slug]["source_paths"] = sorted(path_set)
                 continue
             desc = ""
             for j in range(i + 1, min(i + 6, len(lines))):
@@ -496,7 +520,9 @@ def extract_topics(
     ai_topics = ai_extract_topics(
         sources, k=k, client=client, prompt=ai_prompt, seed=seed
     )
-    merged: Dict[str, Dict[str, object]] = {t["id"]: t for t in heuristic}  # type: ignore[index]
+    merged: Dict[str, Dict[str, object]] = {}
+    for item in heuristic:
+        merged[str(item["id"])] = item
     for t in ai_topics:
         slug = str(t.get("id") or _slugify(str(t.get("name", ""))))
         if slug in merged:

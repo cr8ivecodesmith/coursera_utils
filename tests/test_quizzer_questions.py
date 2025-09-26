@@ -1,51 +1,54 @@
 import json
+from types import SimpleNamespace
 
 
-class _FakeClient:
-    class chat:
-        class completions:
-            @staticmethod
-            def create(**kwargs):
-                # capture prompt for assertions
-                _FakeClient.last_messages = kwargs.get("messages")
-                payload = [
-                    {
-                        "stem": "What is 2+2?",
-                        "choices": ["3", "4", "5", "22"],
-                        "answer": "B",
-                        "explanation": "2+2=4",
-                    },
-                    {
-                        "stem": "Select a prime number.",
-                        "choices": ["4", {"key": "b", "text": "5"}, "6", "8"],
-                        "answer": "b",
-                        "explanation": "5 is prime",
-                    },
-                ]
+class FakeClient:
+    last_messages = None
 
-                class _Resp:
-                    class _Choice:
-                        class _Msg:
-                            content = json.dumps(payload)
+    def __init__(self):
+        payload = [
+            {
+                "stem": "What is 2+2?",
+                "choices": ["3", "4", "5", "22"],
+                "answer": "B",
+                "explanation": "2+2=4",
+            },
+            {
+                "stem": "Select a prime number.",
+                "choices": [
+                    "4",
+                    {"key": "b", "text": "5"},
+                    "6",
+                    "8",
+                ],
+                "answer": "b",
+                "explanation": "5 is prime",
+            },
+        ]
 
-                        message = _Msg()
+        def create(**kwargs):
+            FakeClient.last_messages = kwargs.get("messages")
+            message = SimpleNamespace(content=json.dumps(payload))
+            choice = SimpleNamespace(message=message)
+            return SimpleNamespace(choices=[choice])
 
-                    choices = [_Choice()]
-
-                return _Resp()
+        completions = SimpleNamespace(create=create)
+        self.chat = SimpleNamespace(completions=completions)
 
 
 def test_ai_generate_mcqs_for_topic_parses_and_validates():
     from study_utils import quizzer as qz
 
     topic = {"id": "intro", "name": "Intro"}
-    res = qz.ai_generate_mcqs_for_topic(topic, n=2, client=_FakeClient())
+    res = qz.ai_generate_mcqs_for_topic(topic, n=2, client=FakeClient())
     assert len(res) == 2
     for q in res:
         assert q["type"] == "mcq"
         assert q["topic_id"] == "intro"
         keys = [c["key"] for c in q["choices"]]
-        assert all(len(k) == 1 and k.isalpha() and k == k.upper() for k in keys)
+        assert all(
+            len(k) == 1 and k.isalpha() and k == k.upper() for k in keys
+        )
         assert q["answer"] in set(keys)
 
 
@@ -56,7 +59,7 @@ def test_generate_questions_aggregates_by_topic():
         {"id": "intro", "name": "Intro"},
         {"id": "basics", "name": "Basics"},
     ]
-    res = qz.generate_questions(topics, per_topic=2, client=_FakeClient())
+    res = qz.generate_questions(topics, per_topic=2, client=FakeClient())
     assert len(res) == 4
     from collections import Counter
 
@@ -75,9 +78,10 @@ def test_generate_questions_passes_context(tmp_path):
     topics = [
         {"id": "intro", "name": "Intro", "source_paths": [str(src)]},
     ]
-    _ = qz.generate_questions(topics, per_topic=1, client=_FakeClient())
+    client = FakeClient()
+    _ = qz.generate_questions(topics, per_topic=1, client=client)
     # Ensure the captured messages include our token in the user content
-    msgs = getattr(_FakeClient, "last_messages", []) or []
+    msgs = getattr(client, "last_messages", []) or []
     user_contents = "\n\n".join(
         m.get("content", "") for m in msgs if m.get("role") == "user"
     )

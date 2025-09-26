@@ -3,11 +3,15 @@
 Features:
 - Discover `.mp4` files from a file or directory, with optional recursion.
 - Optional list mode to preview discovered files and proposed output names.
-- "Smart" output names derived from directory structure; optional AI-refined titles.
-- Names cache file (`.transcribe_video_names.json`) that you can edit and reuse.
+- "Smart" output names derived from directory structure; optional AI-refined
+  titles.
+- Names cache file (`.transcribe_video_names.json`) that you can edit and
+  reuse.
 - Composable filename prefixes (text and zero-padded counters).
-- Splits audio into ~10-minute mp3 chunks with pydub/ffmpeg, transcribes, and concatenates.
-- Environment-driven OpenAI client setup via `load_client()` with `.env` support.
+- Splits audio into ~10-minute mp3 chunks with pydub/ffmpeg, transcribes, and
+  concatenates.
+- Environment-driven OpenAI client setup via `load_client()` with `.env`
+  support.
 
 Design notes:
 - Argparse CLI with small, pure helpers for discovery, naming, and parsing.
@@ -51,8 +55,10 @@ def find_video_files(target: Path, recursive: bool = False) -> List[Path]:
     """Return a flat list of `.mp4` files for the given target.
 
     - If `target` is a file, validates extension and returns [target].
-    - If `target` is a directory and `recursive` is False, returns only top-level `.mp4` files.
-    - If `target` is a directory and `recursive` is True, traverses subfolders.
+    - If `target` is a directory and `recursive` is False, return only
+      top-level `.mp4` files.
+    - If `target` is a directory and `recursive` is True, traverse
+      subfolders.
     """
     if target.is_file():
         if target.suffix.lower() != ".mp4":
@@ -112,10 +118,10 @@ def save_names_cache(
     names: Dict[Path, Any],
     meta: Optional[Dict] = None,
 ) -> None:
-    """Save cache; accepts values as either strings (base) or dict entries.
+    """Save cache entries as either strings (base) or small dicts.
 
-    When value is a string, it's treated as the base smart name. When it's a dict,
-    it may contain keys like {"base": str, "final": str}.
+    When the value is a string, treat it as the base smart name. When it is a
+    dict, it may contain keys like {"base": str, "final": str}.
     """
     payload = {
         "version": 2,
@@ -193,9 +199,11 @@ def ai_smart_name(
     Falls back to None on any error.
     """
     prompt = (
-        "Generate a concise, file-name-safe, human-friendly title (<= 80 chars) "
-        "for a course video based only on its directory path and file name. "
-        "Use important folder names (e.g., module/week/section) and the file stem. "
+        "Generate a concise, file-name-safe, human-friendly title "
+        "(<= 80 chars)\n"
+        "for a course video based only on its directory path and file name.\n"
+        "Use important folder names (e.g., module/week/section) and the file "
+        "stem.\n"
         "Avoid quotes; avoid slashes; return only the title.\n\n"
         f"Root: {root}\n"
         f"Path: {video_path}\n"
@@ -295,12 +303,14 @@ def transcribe_audio_file(client: OpenAI, audio_path: Path) -> str:
     )
     # SDK returns a plain string when response_format='text'
     return (
-        response.strip() if isinstance(response, str) else str(response).strip()
+        response.strip()
+        if isinstance(response, str)
+        else str(response).strip()
     )
 
 
 def transcribe_video_file(client: OpenAI, video_path: Path) -> str:
-    """Transcribe an mp4 video by chunking its audio and concatenating results."""
+    """Transcribe an mp4 by chunking its audio and concatenating results."""
     print(f"Splitting audio for {video_path.name} ...")
     segments = split_video_to_audio_segments(video_path)
     print(f"Segments directory: {segments[0].parent if segments else 'N/A'}")
@@ -343,7 +353,8 @@ def parse_prefix_parts(parts: Optional[List[str]]) -> List[Tuple[str, str]]:
     Supports items of the form:
     - text:VALUE (may include separators/spaces)
     - counter:N | NN | NNN | NNNN (zero-padded index width 1-4)
-    Note: 'sep:VALUE' is accepted for backward compatibility and treated as text:VALUE.
+    Note: 'sep:VALUE' is accepted for backward compatibility and treated as
+    text:VALUE.
     Returns a list of tuples: (kind, value) where kind in {text, sep, counter}.
     Unknown items are treated as text:VALUE (back-compat).
     """
@@ -372,7 +383,9 @@ def parse_prefix_parts(parts: Optional[List[str]]) -> List[Tuple[str, str]]:
     return out
 
 
-def build_prefix_string(parsed_parts: List[Tuple[str, str]], index: int) -> str:
+def build_prefix_string(
+    parsed_parts: List[Tuple[str, str]], index: int
+) -> str:
     """Build the prefix string for a given 1-based index."""
     buf: List[str] = []
     for kind, val in parsed_parts:
@@ -424,9 +437,9 @@ def main():
         action="append",
         help=(
             "Composable prefix parts (repeatable). Format: "
-            "text:VALUE | counter:N|NN|NNN|NNNN. "
-            "Order is preserved. Example: -p 'text:This is a text' -p 'text:-' -p 'counter:NN' -p 'text: ' "
-            "(Note: legacy sep:VALUE is accepted and treated as text:VALUE)."
+            "text:VALUE | counter:N|NN|NNN|NNNN. Order is preserved. "
+            "Example: -p 'text:Intro' -p 'counter:NN' -p 'text: '. "
+            "Legacy 'sep:VALUE' is treated as text:VALUE."
         ),
     )
     parser.add_argument(
@@ -458,13 +471,19 @@ def main():
     parser.add_argument(
         "--names-file",
         dest="names_file",
-        help="Path to cache file for proposed names (defaults to a hidden file in target root)",
+        help=(
+            "Path to cache file for proposed names (defaults to a hidden file "
+            "in the target root)"
+        ),
     )
     parser.add_argument(
         "--refresh-names",
         dest="refresh_names",
         action="store_true",
-        help="Regenerate names for discovered files (overwrites cache entries)",
+        help=(
+            "Regenerate names for discovered files "
+            "(overwrites cache entries)"
+        ),
     )
 
     args = parser.parse_args()
@@ -481,7 +500,8 @@ def main():
             print("No .mp4 files found.")
             return
         if args.smart_names:
-            # Build and save proposed names, merging with any existing cache unless refresh requested
+            # Build and save proposed names, merging with any existing cache
+            # unless a refresh is requested.
             client = load_client() if args.use_ai else None
             root = target_path if target_path.is_dir() else target_path.parent
             cache_path = (

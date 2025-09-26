@@ -49,7 +49,8 @@ def test_extract_topics_simple_headings(tmp_path: Path):
     topics = qz.extract_topics([(f, md)])
     names = {t["name"] for t in topics}
     ids = {t["id"] for t in topics}
-    # Dedup Basics; include Intro and Basics; Details may be filtered (too narrow)
+    # Dedup Basics; include Intro and Basics; Details may be filtered (too
+    # narrow)
     assert "Intro" in names
     assert "Basics" in names
     assert len(names) == len(ids)  # unique slugs

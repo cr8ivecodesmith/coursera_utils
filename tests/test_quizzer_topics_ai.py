@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):
@@ -14,24 +16,24 @@ def test_extract_topics_with_ai_merges_suggestions(tmp_path: Path):
     f.write_text(md)
 
     class FakeClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    # The real implementation will return JSON with topic names
-                    class _Resp:
-                        class _Choice:
-                            class _Msg:
-                                # Pretend AI suggests an extra topic beyond headings
-                                content = '[{"name": "Advanced Techniques", "description": "Deep dive"}]'
+        def __init__(self):
+            payload = [{
+                "name": "Advanced Techniques",
+                "description": "Deepdive",
+            }]
 
-                            message = _Msg()
+            def create(**kwargs):
+                message = SimpleNamespace(content=json.dumps(payload))
+                choice = SimpleNamespace(message=message)
+                return SimpleNamespace(choices=[choice])
 
-                        choices = [_Choice()]
+            completions = SimpleNamespace(create=create)
+            self.chat = SimpleNamespace(completions=completions)
 
-                    return _Resp()
-
-    # Once implemented, this should return Intro, Basics (heuristics) + Advanced Techniques (AI)
-    topics = qz.extract_topics([(f, md)], use_ai=True, client=FakeClient(), k=5)
+    # Once implemented, this should return Intro,
+    # Basics (heuristics) + Advanced Techniques (AI)
+    topics = qz.extract_topics(
+        [(f, md)], use_ai=True, client=FakeClient(), k=5
+    )
     names = {t["name"] for t in topics}
     assert {"Intro", "Basics", "Advanced Techniques"}.issubset(names)

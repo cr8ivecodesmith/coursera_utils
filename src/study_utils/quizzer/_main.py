@@ -62,7 +62,10 @@ def _cmd_init(args: argparse.Namespace) -> int:
 def _cmd_topics_generate(args: argparse.Namespace) -> int:
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
-        print("Error: quizzer.toml not found. Run 'quizzer init <name>' first.")
+        print(
+            "Error: quizzer.toml not found. "
+            "Run 'quizzer init <name>' first."
+        )
         return 2
     cfg = _load_toml(cfg_path)
     try:
@@ -103,7 +106,8 @@ def _cmd_topics_list(args: argparse.Namespace) -> int:
     topics_path = out_dir / "topics.jsonl"
     if not topics_path.exists():
         print(
-            f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'."
+            f"No topics found at {topics_path}. Run 'quizzer topics generate "
+            f"{args.name}'."
         )
         return 1
     topics = read_jsonl(topics_path)
@@ -128,7 +132,10 @@ def _cmd_not_implemented(label: str) -> int:
 def _cmd_questions_generate(args: argparse.Namespace) -> int:
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
-        print("Error: quizzer.toml not found. Run 'quizzer init <name>' first.")
+        print(
+            "Error: quizzer.toml not found. "
+            "Run 'quizzer init <name>' first."
+        )
         return 2
     cfg = _load_toml(cfg_path)
     try:
@@ -140,7 +147,8 @@ def _cmd_questions_generate(args: argparse.Namespace) -> int:
     topics_path = out_dir / "topics.jsonl"
     if not topics_path.exists():
         print(
-            f"No topics found at {topics_path}. Run 'quizzer topics generate {args.name}'."
+            f"No topics found at {topics_path}. Run 'quizzer topics generate "
+            f"{args.name}'."
         )
         return 1
     topics = read_jsonl(topics_path)
@@ -186,7 +194,8 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
     q_path = out_dir / "questions.jsonl"
     if not q_path.exists():
         print(
-            f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'."
+            f"No questions found at {q_path}. Run 'quizzer questions generate "
+            f"{args.name}'."
         )
         return 1
     questions = read_jsonl(q_path)
@@ -208,8 +217,9 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
 def _cmd_start(args: argparse.Namespace) -> int:
     """Start a simple quiz session using Textual UI.
 
-    Loads questions from `.quizzer/<name>/questions.jsonl`, optionally shuffles and limits to `--num`.
-    For this initial pass, it displays questions without recording responses.
+    Load questions from `.quizzer/<name>/questions.jsonl`, optionally shuffle
+    and limit to `--num`. For this initial pass, display questions without
+    recording responses.
     """
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
@@ -220,7 +230,8 @@ def _cmd_start(args: argparse.Namespace) -> int:
     q_path = out_dir / "questions.jsonl"
     if not q_path.exists():
         print(
-            f"No questions found at {q_path}. Run 'quizzer questions generate {args.name}'."
+            f"No questions found at {q_path}. Run 'quizzer questions generate "
+            f"{args.name}'."
         )
         return 1
     questions = read_jsonl(q_path)

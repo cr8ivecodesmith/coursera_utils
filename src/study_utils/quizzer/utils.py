@@ -45,7 +45,8 @@ def _load_toml(path: Path) -> dict:
             import tomli as tomllib  # type: ignore
         except Exception as exc:  # pragma: no cover
             raise RuntimeError(
-                "TOML support not available. Use Python 3.11+ or install 'tomli'."
+                "TOML support not available. Use Python 3.11+ or install "
+                "'tomli'."
             ) from exc
     with path.open("rb") as fh:
         return tomllib.load(fh)
@@ -75,11 +76,13 @@ def iter_quiz_files(
 ) -> List[Path]:
     """Return a deterministic list of Markdown files to use as sources.
 
-    - If a path is a file and matches an extension -> include
-    - If a path is a directory -> traverse with depth control
-      Depth semantics: level_limit == 1 includes only files directly under the directory.
-      level_limit == 2 includes one subdirectory level, and so on. 0 means no limit.
-    Files are returned in ascending name order for determinism and to align with tests.
+    - Include a path when it is a file that matches one of the extensions.
+    - Traverse directories with optional depth control.
+      ``level_limit == 1`` includes only files directly under the directory.
+      ``level_limit == 2`` includes one subdirectory level, and so on.
+      ``0`` means no limit.
+    Files are returned in ascending name order for determinism and alignment
+    with tests.
     """
     if level_limit < 0:
         raise ValueError("level_limit must be >= 0")

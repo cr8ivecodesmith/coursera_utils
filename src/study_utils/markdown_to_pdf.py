@@ -2,13 +2,15 @@
 
 Features:
 - Discover and concatenate Markdown files to a single PDF.
-- Configurable paper size, orientation, and margins via CSS @page.
-- Optional table of contents generated from headings.
-- Optional title page via Jinja2; optional AI-generated fields using load_client().
+- Configure paper size, orientation, and margins via CSS ``@page``.
+- Generate an optional table of contents from document headings.
+- Render an optional title page via Jinja2; optionally call ``load_client()``
+  to AI-fill metadata fields.
 
 Design:
-- Pure helper functions for discovery, CSS generation, Markdown→HTML, TOC, and templating.
-- I/O and WeasyPrint usage isolated in main().
+- Use pure helper functions for discovery, CSS generation, Markdown-to-HTML,
+  TOC assembly, and templating.
+- Isolate I/O and WeasyPrint usage in ``main()``.
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ from dataclasses import dataclass
 from datetime import date
 from html import escape
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, cast
 
 from jinja2 import Environment, FileSystemLoader, Template
 from markdown_it import MarkdownIt
@@ -63,7 +65,8 @@ def iter_markdown_files(
 ) -> Iterator[Path]:
     """Yield markdown files from the given file/dir inputs.
 
-    - level_limit=0 means unlimited recursion; >=1 limits depth relative to each starting dir.
+    ``level_limit=0`` means unlimited recursion; positive values limit depth
+    relative to each starting directory.
     """
     for p in inputs:
         p = p.expanduser().resolve()
@@ -119,7 +122,8 @@ def _validate_unit(value: str) -> str:
     v = value.strip()
     if not _CSS_UNIT_RE.match(v):
         raise ValueError(
-            f"Invalid CSS size '{value}'. Use units in, mm, cm, pt (e.g., '1in', '10mm')."
+            f"Invalid CSS size '{value}'. Use units in, mm, cm, pt "
+            "(e.g., '1in', '10mm')."
         )
     return v
 
@@ -159,7 +163,8 @@ def build_page_css(
     size_keyword = PAPER_SIZES.get(paper_size.lower())
     if not size_keyword:
         raise ValueError(
-            f"Unsupported paper size: {paper_size}. Choose from {sorted(PAPER_SIZES)}"
+            f"Unsupported paper size: {paper_size}. Choose from "
+            f"{sorted(PAPER_SIZES)}"
         )
     if orientation not in {"portrait", "landscape"}:
         raise ValueError("orientation must be 'portrait' or 'landscape'")
@@ -208,7 +213,7 @@ class Heading:
 def render_markdown_with_headings(
     md: MarkdownIt, text: str, used: Dict[str, int]
 ) -> Tuple[str, List[Heading]]:
-    """Render markdown to HTML while injecting unique heading anchors and returning headings.
+    """Render markdown to HTML and return headings with unique anchors.
 
     Modifies token tree to add id attributes for heading_open tokens.
     """
@@ -240,8 +245,9 @@ def render_markdown_with_headings(
                     except Exception:
                         t.attrs = [["id", anchor]]  # type: ignore[assignment]
                 else:
-                    if isinstance(t.attrs, dict):  # type: ignore[redundant-cast]
-                        t.attrs["id"] = anchor
+                    if isinstance(t.attrs, dict):
+                        attrs_dict = cast(Dict[str, str], t.attrs)
+                        attrs_dict["id"] = anchor
                     else:
                         # assume list of [name, value]
                         found = False
@@ -299,7 +305,12 @@ def default_title_template() -> Template:
       <meta charset="utf-8">
       <style>
         body { font-family: sans-serif; }
-        .title-page { display: flex; height: 100vh; align-items: center; justify-content: center; }
+        .title-page {
+          display: flex;
+          height: 100vh;
+          align-items: center;
+          justify-content: center;
+        }
         .box { text-align: center; }
         h1 { font-size: 40pt; margin: 0 0 0.4em; }
         h2 { font-size: 20pt; margin: 0 0 1.2em; color: #555; }
@@ -362,7 +373,9 @@ def generate_ai_title_fields(
             # Local import to avoid hard dependency on import time
             from .transcribe_video import load_client  # type: ignore
         except Exception:
-            from study_utils.transcribe_video import load_client  # type: ignore
+            from study_utils import transcribe_video as _tv  # type: ignore
+
+            load_client = _tv.load_client
     except Exception:
         return TitleFields()
 
@@ -373,8 +386,10 @@ def generate_ai_title_fields(
 
     system = "You write concise document metadata as JSON."
     user = (
-        "Given the following sample content of a document, propose a short title, optional subtitle, and author.\n"
-        "Respond as JSON with keys: title, subtitle, author. Keep title <= 80 chars.\n\n"
+        "Given the following sample content of a document, propose a short "
+        "title, optional subtitle, and author.\n"
+        "Respond as JSON with keys: title, subtitle, author. Keep title "
+        "<= 80 chars.\n\n"
         f"Content sample:\n{sample_text[:2000]}"
     )
     try:
@@ -434,11 +449,23 @@ def assemble_html(
     """
     # Base styles: reset-ish plus pygments plus optional custom.
     base_css = [
-        "body { font-family: 'DejaVu Sans', 'Liberation Sans', sans-serif; color: #111; line-height: 1.4; }",
+        (
+            "body { font-family: 'DejaVu Sans', 'Liberation Sans', "
+            "sans-serif; color: #111; line-height: 1.4; }"
+        ),
         "h1,h2,h3,h4,h5,h6 { page-break-after: avoid; }",
-        ".toc { font-size: 0.95em; } .toc a { text-decoration: none; color: inherit; }",
-        "pre, code { font-family: 'DejaVu Sans Mono', 'Liberation Mono', monospace; }",
-        ".highlight { background: #f7f7f7; padding: 0.6em; overflow-x: auto; }",
+        (
+            ".toc { font-size: 0.95em; } .toc a { text-decoration: none; "
+            "color: inherit; }"
+        ),
+        (
+            "pre, code { font-family: 'DejaVu Sans Mono', 'Liberation Mono', "
+            "monospace; }"
+        ),
+        (
+            ".highlight { background: #f7f7f7; padding: 0.6em; "
+            "overflow-x: auto; }"
+        ),
     ]
     base_css.append(highlight_css)
 
@@ -461,10 +488,15 @@ def assemble_html(
 
     # Build combined headings for TOC
     if include_toc:
-        # naive TOC: expect each part contains its own headings; combine top-level
-        # In practice, we collected headings during rendering and could pass them separately if needed.
-        # For simplicity, users get a section list.
-        toc_items = [f"<li>{escape(title)}</li>" for title, _ in parts if title]
+        # naive TOC: expect each part contains its own headings; combine
+        # top-level entries only. In practice, we collected headings during
+        # rendering and could pass them separately. For simplicity, users get
+        # a section list.
+        toc_items = [
+            f"<li>{escape(title)}</li>"
+            for title, _ in parts
+            if title
+        ]
         if toc_items:
             body_parts.append(
                 '<nav class="toc-root"><h2>Table of Contents</h2><ul>'
@@ -648,7 +680,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         print(f"- Paper: {args.paper_size} {args.orientation}")
         print(f"- TOC: {'on' if args.toc else 'off'} (depth {args.toc_depth})")
         print(
-            f"- Title page: {'on' if args.title_page else 'off'}{' + AI' if args.title_page and args.ai_title else ''}"
+            "- Title page: "
+            f"{'on' if args.title_page else 'off'}"
+            f"{' + AI' if args.title_page and args.ai_title else ''}"
         )
         return
 
@@ -667,7 +701,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         from weasyprint import HTML, CSS
     except Exception:
         raise SystemExit(
-            "WeasyPrint is required. Install system libraries (Cairo, Pango) and the 'weasyprint' package."
+            "WeasyPrint is required. Install system libraries (Cairo, Pango) "
+            "and the 'weasyprint' package."
         )
 
     base_url = (

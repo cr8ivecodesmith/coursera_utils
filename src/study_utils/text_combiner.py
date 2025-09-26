@@ -3,12 +3,14 @@
 Implements the utility described in spec.md (text_combiner.py):
 - Required: output filename (first positional)
 - Required: one or more files and/or directories to source text files
-- Optional controls for extensions, depth, ordering, separators, and section titles
+- Optional controls for extensions, depth, ordering, separators, and section
+  titles
 
 Design notes:
 - Uses pathlib and small, testable functions
 - Keeps core logic pure; isolates I/O in main combine function
-- OpenAI integration is optional and only used when a smart section title is requested
+- OpenAI integration is optional and only used when a smart section title is
+  requested
 """
 
 from __future__ import annotations
@@ -21,7 +23,8 @@ from pathlib import Path
 from typing import Iterator, List, Optional, Sequence, Set
 
 
-# We reuse load_client from sibling transcribe_video to avoid duplicating env handling
+# Reuse load_client from sibling transcribe_video to avoid duplicating
+# environment handling.
 try:  # prefer relative import for the src/ layout
     from .transcribe_video import load_client  # type: ignore
 except Exception:  # pragma: no cover - fallback to top-level shim if present
@@ -59,7 +62,7 @@ class CombineOptions:
 
 
 def parse_extensions(values: Optional[Sequence[str]]) -> Set[str]:
-    """Normalize extension strings to a set of lower-case values without leading dots.
+    """Normalize extension strings to lower-case values without leading dots.
 
     Examples:
     [".txt", "md"] -> {"txt", "md"}
@@ -91,7 +94,8 @@ def parse_order_by(value: Optional[str]) -> Optional[str]:
     valid = {"created", "-created", "modified", "-modified", "name", "-name"}
     if v not in valid:
         raise ValueError(
-            "--order-by must be one of: created, -created, modified, -modified, name, -name"
+            "--order-by must be one of: created, -created, modified, "
+            "-modified, name, -name"
         )
     return v
 
@@ -99,15 +103,16 @@ def parse_order_by(value: Optional[str]) -> Optional[str]:
 def parse_heading(value: Optional[str]) -> Optional[str]:
     """Normalize a markdown heading spec.
 
-    Accepts strings like '#', '##', ..., '######'. Returns the same string if valid.
-    Returns None if not provided.
+    Accept strings like '#', '##', ..., '######'. Return the same string if
+    valid; return ``None`` when not provided.
     """
     if not value:
         return None
     v = value.strip()
     if not re.fullmatch(r"#{1,6}", v):
         raise ValueError(
-            "--section-title-heading must be one of: #, ##, ###, ####, #####, ######"
+            "--section-title-heading must be one of: #, ##, ###, ####, "
+            "#####, ######"
         )
     return v
 
@@ -124,13 +129,15 @@ def _matches_extension(path: Path, extensions: Set[str]) -> bool:
 def iter_text_files(
     paths: Sequence[Path], extensions: Set[str], level_limit: int
 ) -> Iterator[Path]:
-    """Yield matching files from given input paths, preserving input path order.
+    """Yield matching files from given input paths, preserving input order.
 
-    - If a path is a file and extension matches -> yield directly
-    - If a path is a directory -> traverse with optional depth limit
-      Depth semantics: level_limit == 1 includes only files directly under the directory.
-      level_limit == 2 includes one subdirectory level, and so on. 0 means no limit.
-    Files within a directory are yielded in ascending name order for determinism.
+    - A matching file yields directly.
+    - A directory is traversed with an optional depth limit.
+      ``level_limit == 1`` includes only files directly under the directory.
+      ``level_limit == 2`` includes one subdirectory level, and so on.
+      ``0`` means no limit.
+    Files within a directory are yielded in ascending name order for
+    determinism.
     """
     if level_limit < 0:
         raise ValueError("--level-limit must be >= 0")
@@ -155,7 +162,8 @@ def iter_text_files(
                 if _matches_extension(f, extensions):
                     yield f
         else:
-            # Bounded depth: include files whose rel path parts length <= level_limit
+            # Bounded depth: include files whose relative path length is
+            # within the level limit.
             for f in sorted(
                 (c for c in p.rglob("*") if c.is_file()),
                 key=lambda x: x.name.lower(),
@@ -166,7 +174,8 @@ def iter_text_files(
                     continue
                 # Directory depth is number of directories between p and f
                 # For files, len(rel.parts) counts directories + filename
-                # We allow len(parts) <= level_limit to include up to (level_limit-1) directories
+                # Allow len(parts) <= level_limit to include up to
+                # (level_limit - 1) directories.
                 if len(rel.parts) <= level_limit and _matches_extension(
                     f, extensions
                 ):
@@ -233,8 +242,9 @@ def _ai_title_from_filename(path: Path) -> Optional[str]:
     from openai import BadRequestError  # type: ignore
 
     prompt = (
-        "Generate a concise section title (<= 80 chars) based only on this file name. "
-        "Avoid quotes and punctuation-heavy output; return only the title.\n\n"
+        "Generate a concise section title (<= 80 chars) based only on this "
+        "file name. Avoid quotes and punctuation-heavy output; return only "
+        "the title.\n\n"
         f"Filename: {path.name}\n"
     )
     try:
@@ -243,7 +253,9 @@ def _ai_title_from_filename(path: Path) -> Optional[str]:
             messages=[
                 {
                     "role": "system",
-                    "content": "You create concise, human-friendly section titles.",
+                    "content": (
+                        "You craft concise, human-friendly section titles."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -270,8 +282,9 @@ def _ai_title_from_content(content: str, filename: str) -> Optional[str]:
 
     snippet = content[:4000]
     prompt = (
-        "Generate a concise section title (<= 80 chars) from the following text content. "
-        "Prefer the main topic or clear heading. Avoid quotes; return only the title.\n\n"
+        "Generate a concise section title (<= 80 chars) from the following "
+        "text content. Prefer the main topic or a clear heading. Avoid "
+        "quotes; return only the title.\n\n"
         f"Filename: {filename}\n"
         f"Content:\n{snippet}"
     )
@@ -281,7 +294,9 @@ def _ai_title_from_content(content: str, filename: str) -> Optional[str]:
             messages=[
                 {
                     "role": "system",
-                    "content": "You write concise, human-friendly section titles.",
+                    "content": (
+                        "You craft concise, human-friendly section titles."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -374,7 +389,8 @@ def combine_files(
                     options.section_title_heading,
                 )
                 if idx > 0:
-                    # Ensure a blank line between previous content and next title
+                    # Ensure a blank line between the previous content and
+                    # the next title.
                     out.write("\n\n")
                 if title_line:
                     out.write(title_line)
@@ -416,7 +432,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--level-limit",
         type=int,
         default=0,
-        help="Directory depth to traverse for directories: 0=no limit; 1=files directly under; 2=+one sublevel; etc.",
+        help=(
+            "Directory depth to traverse for directories: 0=no limit; "
+            "1=files directly under; 2=one extra sublevel; etc."
+        ),
     )
     p.add_argument(
         "--combine-by",
@@ -426,7 +445,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--order-by",
-        help="Order files by: created | -created | modified | -modified | name | -name",
+        help=(
+            "Order files by: created | -created | modified | -modified | "
+            "name | -name"
+        ),
     )
     p.add_argument(
         "--section-title",
@@ -440,7 +462,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--section-title-heading",
-        help="Markdown heading prefix for titles, e.g. '#', '##'. Default none",
+        help=(
+            "Markdown heading prefix for titles, e.g. '#', '##'. Default is "
+            "no heading"
+        ),
     )
     return p
 
