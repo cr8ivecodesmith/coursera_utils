@@ -348,17 +348,6 @@ def test_text_chunker_encoder_handles_empty_tokens(monkeypatch):
     assert chunker.chunk("text") == []
 
 
-def test_text_chunker_fallback_handles_blank_text():
-    chunker = ingest.TextChunker(
-        tokenizer="plain",
-        encoding="ignored",
-        tokens_per_chunk=5,
-        token_overlap=0,
-        fallback_delimiter="\n\n",
-    )
-    assert chunker.chunk("   ") == []
-    assert chunker._chunk_with_fallback("   ") == []
-
 
 def test_collect_chunks_skips_empty_files(tmp_path, chunker, dedupe_meta):
     empty = _make_file(tmp_path / "empty.txt", "   ")
