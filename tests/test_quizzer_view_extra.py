@@ -62,7 +62,12 @@ def test_quiz_app_compose_and_update(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(qv, "Static", StubStatic)
     monkeypatch.setattr(qv, "Button", StubButton)
 
-    question = {"id": "1", "stem": "Q1", "answer": "A", "choices": [{"key": "A", "text": "Ans"}]}
+    question = {
+        "id": "1",
+        "stem": "Q1",
+        "answer": "A",
+        "choices": [{"key": "A", "text": "Ans"}],
+    }
     app = qv.QuizApp([question])
 
     stage = StubContainer(id="stage")
@@ -86,21 +91,46 @@ def test_quiz_app_compose_and_update(monkeypatch: pytest.MonkeyPatch) -> None:
     app.action_select_c()
     app.action_select_d()
 
-    monkeypatch.setattr(app, "query_one", lambda selector, _type: stage if selector == "#stage" else answered)
+    monkeypatch.setattr(
+        app,
+        "query_one",
+        lambda selector, _type: stage if selector == "#stage" else answered,
+    )
     app._update_stage()
     assert answered.text.startswith("Answered")
 
 
-def test_question_view_compose_variants(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(qv.Container, "__enter__", lambda self: self, raising=False)
-    monkeypatch.setattr(qv.Container, "__exit__", lambda self, exc_type, exc, tb: False, raising=False)
-    monkeypatch.setattr(qv.Vertical, "__enter__", lambda self: self, raising=False)
-    monkeypatch.setattr(qv.Vertical, "__exit__", lambda self, exc_type, exc, tb: False, raising=False)
+def test_question_view_compose_variants(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        qv.Container, "__enter__", lambda self: self, raising=False
+    )
+    monkeypatch.setattr(
+        qv.Container,
+        "__exit__",
+        lambda self, exc_type, exc, tb: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        qv.Vertical, "__enter__", lambda self: self, raising=False
+    )
+    monkeypatch.setattr(
+        qv.Vertical,
+        "__exit__",
+        lambda self, exc_type, exc, tb: False,
+        raising=False,
+    )
     monkeypatch.setattr(qv, "Button", StubButton)
     monkeypatch.setattr(qv, "Static", StubStatic)
 
     view = qv.QuestionView(
-        {"stem": "Q", "choices": ["Option", {"key": "b", "text": "Choice"}], "answer": "B", "explanation": "Because"},
+        {
+            "stem": "Q",
+            "choices": ["Option", {"key": "b", "text": "Choice"}],
+            "answer": "B",
+            "explanation": "Because",
+        },
         index=1,
         total=2,
         selected="?",
@@ -119,9 +149,16 @@ def test_summarize_results_handles_unknown_and_unanswered() -> None:
 
 
 def test_quiz_app_summary_helpers() -> None:
-    app = qv.QuizApp([
-        {"id": "1", "stem": "Q1", "answer": "A", "choices": [{"key": "A", "text": "Ans"}]}
-    ])
+    app = qv.QuizApp(
+        [
+            {
+                "id": "1",
+                "stem": "Q1",
+                "answer": "A",
+                "choices": [{"key": "A", "text": "Ans"}],
+            }
+        ]
+    )
     app.action_select_a()
     app._summary = [{"id": str(i)} for i in range(6)]
     assert app.summary_page_count(page_size=4) == 2
@@ -138,10 +175,19 @@ def test_on_button_pressed_branches(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(qv, "Vertical", StubVertical)
     monkeypatch.setattr(qv, "Static", StubStatic)
     monkeypatch.setattr(qv, "Button", StubButton)
-    app = qv.QuizApp([
-        {"id": "1", "stem": "Q1", "answer": "A", "choices": [{"key": "A", "text": "Ans"}]}
-    ])
-    monkeypatch.setattr(app, "query_one", lambda selector, _type: StubContainer(id=selector))
+    app = qv.QuizApp(
+        [
+            {
+                "id": "1",
+                "stem": "Q1",
+                "answer": "A",
+                "choices": [{"key": "A", "text": "Ans"}],
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        app, "query_one", lambda selector, _type: StubContainer(id=selector)
+    )
     list(app.compose())
     app.on_button_pressed(StubEvent("choice-A"))
     app.on_button_pressed(StubEvent("submit"))

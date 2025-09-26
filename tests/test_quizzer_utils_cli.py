@@ -12,10 +12,12 @@ from study_utils.quizzer import utils as q_utils
 from study_utils.quizzer import _main as q_cli
 
 
-# ---------------------- utils._find_config / _get_quiz_section ----------------------
+# ---- utils._find_config / _get_quiz_section helpers ----
 
 
-def test_find_config_explicit_and_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_find_config_explicit_and_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     explicit = tmp_path / "quizzer.toml"
     explicit.write_text("[quiz.example]\n", encoding="utf-8")
     assert q_utils._find_config(str(explicit)) == explicit.resolve()
@@ -49,7 +51,9 @@ def test_load_toml_with_tomllib(tmp_path: Path) -> None:
     assert data["quiz"]["demo"]["sources"] == ["a"]
 
 
-def test_load_toml_falls_back_to_tomli(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_load_toml_falls_back_to_tomli(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     path = tmp_path / "config.toml"
     path.write_text("[doc]\nkey='value'\n", encoding="utf-8")
     real_import = builtins.__import__
@@ -71,10 +75,12 @@ def test_load_toml_falls_back_to_tomli(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert data["doc"]["key"] == "value"
 
 
-# ---------------------- utils._read_files / iter_quiz_files / jsonl helpers ----------------------
+# ---- utils._read_files / iter_quiz_files / jsonl helpers ----
 
 
-def test_read_files_handles_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_read_files_handles_read_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     files = [tmp_path / "ok.txt", tmp_path / "bad.txt"]
     for p in files:
         p.write_text("content", encoding="utf-8")
@@ -89,7 +95,9 @@ def test_read_files_handles_read_errors(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert result == [(files[0], "ok"), (files[1], "")]
 
 
-def test_slugify_and_iter_quiz_files(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_slugify_and_iter_quiz_files(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     assert q_utils._slugify(" Intro  Topic ! ") == "intro-topic"
     with pytest.raises(ValueError):
         q_utils.iter_quiz_files([], level_limit=-1)
@@ -117,7 +125,7 @@ def test_read_write_jsonl(tmp_path: Path) -> None:
     assert back == records
 
 
-# ---------------------- CLI helpers and commands ----------------------
+# ---- CLI helpers and commands ----
 
 
 def test_out_dir_for_defaults_and_template(tmp_path: Path) -> None:
@@ -129,7 +137,11 @@ def test_out_dir_for_defaults_and_template(tmp_path: Path) -> None:
     assert resolved_default.as_posix().endswith(".quizzer/demo")
 
 
-def test_cmd_init_creates_template(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_init_creates_template(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     args = Namespace(name="demo")
     code = q_cli._cmd_init(args)
@@ -143,8 +155,12 @@ def test_cmd_init_creates_template(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     assert "already exists" in capsys.readouterr().out
 
 
-def test_cmd_topics_generate_error_paths(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    args = Namespace(name="demo", config=None, extensions=["md"], level_limit=0, use_ai=False)
+def test_cmd_topics_generate_error_paths(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    args = Namespace(
+        name="demo", config=None, extensions=["md"], level_limit=0, use_ai=False
+    )
 
     monkeypatch.setattr(q_cli, "_find_config", lambda *_: None)
     assert q_cli._cmd_topics_generate(args) == 2
@@ -160,13 +176,19 @@ def test_cmd_topics_generate_error_paths(monkeypatch: pytest.MonkeyPatch, capsys
     assert q_cli._cmd_topics_generate(args) == 2
     assert "must define 'sources'" in capsys.readouterr().out
 
-    monkeypatch.setattr(q_cli, "_get_quiz_section", lambda *_: {"sources": ["/missing"]})
+    monkeypatch.setattr(
+        q_cli, "_get_quiz_section", lambda *_: {"sources": ["/missing"]}
+    )
     monkeypatch.setattr(q_cli, "iter_quiz_files", lambda *a, **kw: [])
     assert q_cli._cmd_topics_generate(args) == 1
     assert "No matching" in capsys.readouterr().out
 
 
-def test_cmd_topics_generate_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_topics_generate_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     materials = tmp_path / "materials"
     materials.mkdir()
@@ -175,7 +197,10 @@ def test_cmd_topics_generate_success(monkeypatch: pytest.MonkeyPatch, tmp_path: 
 
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text(
-        "[quiz.demo]\n" "sources = ['materials']\n" "[storage]\n" "out_dir = '.quizzer/<name>'\n",
+        "[quiz.demo]\n"
+        "sources = ['materials']\n"
+        "[storage]\n"
+        "out_dir = '.quizzer/<name>'\n",
         encoding="utf-8",
     )
 
@@ -200,7 +225,11 @@ def test_cmd_topics_generate_success(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     assert "Wrote" in capsys.readouterr().out
 
 
-def test_cmd_topics_list(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_topics_list(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text("[quiz.demo]\n", encoding="utf-8")
@@ -216,7 +245,9 @@ def test_cmd_topics_list(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys
     assert "No topics found" in capsys.readouterr().out
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "topics.jsonl").write_text(json.dumps({"name": "Intro"}) + "\n", encoding="utf-8")
+    (out_dir / "topics.jsonl").write_text(
+        json.dumps({"name": "Intro"}) + "\n", encoding="utf-8"
+    )
     assert q_cli._cmd_topics_list(args) == 0
     assert "Intro" in capsys.readouterr().out
 
@@ -230,14 +261,24 @@ def test_cmd_not_implemented(capsys: pytest.CaptureFixture[str]) -> None:
     assert "not implemented" in capsys.readouterr().out
 
 
-def test_cmd_questions_generate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_questions_generate(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text(
-        "[quiz.demo]\nper_topic = 2\nensure_coverage = true\n[storage]\nout_dir = '.quizzer/<name>'\n",
+        "[quiz.demo]\n"
+        "per_topic = 2\n"
+        "ensure_coverage = true\n"
+        "[storage]\n"
+        "out_dir = '.quizzer/<name>'\n",
         encoding="utf-8",
     )
-    args = Namespace(name="demo", config=None, per_topic=None, ensure_coverage=True)
+    args = Namespace(
+        name="demo", config=None, per_topic=None, ensure_coverage=True
+    )
 
     monkeypatch.setattr(q_cli, "_find_config", lambda *_: None)
     assert q_cli._cmd_questions_generate(args) == 2
@@ -247,7 +288,13 @@ def test_cmd_questions_generate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     assert q_cli._cmd_questions_generate(args) == 2
     assert "Quiz section not found" in capsys.readouterr().out
 
-    monkeypatch.setattr(q_cli, "_load_toml", lambda *_: {"quiz": {"demo": {"per_topic": 2, "ensure_coverage": True}}})
+    monkeypatch.setattr(
+        q_cli,
+        "_load_toml",
+        lambda *_: {
+            "quiz": {"demo": {"per_topic": 2, "ensure_coverage": True}}
+        },
+    )
     assert q_cli._cmd_questions_generate(args) == 1
     assert "No topics found" in capsys.readouterr().out
 
@@ -271,14 +318,28 @@ def test_cmd_questions_generate(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     monkeypatch.setattr(q_cli, "load_client", lambda: SimpleNamespace())
 
     def fake_generate_success(topics, per_topic, client, ensure_coverage):
-        return [{"id": "intro-1", "topic_id": "intro", "type": "mcq", "stem": "Q", "choices": [], "answer": "A", "explanation": ""}]
+        return [
+            {
+                "id": "intro-1",
+                "topic_id": "intro",
+                "type": "mcq",
+                "stem": "Q",
+                "choices": [],
+                "answer": "A",
+                "explanation": "",
+            }
+        ]
 
     monkeypatch.setattr(q_cli, "generate_questions", fake_generate_success)
     assert q_cli._cmd_questions_generate(args) == 0
     assert (topics_dir / "questions.jsonl").exists()
 
 
-def test_cmd_questions_list(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_questions_list(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text("[quiz.demo]\n", encoding="utf-8")
@@ -294,7 +355,11 @@ def test_cmd_questions_list(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, cap
     assert "No questions found" in capsys.readouterr().out
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "questions.jsonl").write_text(json.dumps({"id": "1", "topic_id": "intro", "stem": "Q", "answer": "A"}) + "\n", encoding="utf-8")
+    (out_dir / "questions.jsonl").write_text(
+        json.dumps({"id": "1", "topic_id": "intro", "stem": "Q", "answer": "A"})
+        + "\n",
+        encoding="utf-8",
+    )
     assert q_cli._cmd_questions_list(args) == 0
     assert "[intro]" in capsys.readouterr().out
 
@@ -303,7 +368,11 @@ def test_cmd_questions_list(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, cap
     assert "No questions to show" in capsys.readouterr().out
 
 
-def test_cmd_start(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cmd_start(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     monkeypatch.chdir(tmp_path)
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text("[quiz.demo]\n", encoding="utf-8")
@@ -324,7 +393,11 @@ def test_cmd_start(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pyte
     assert q_cli._cmd_start(args) == 1
     assert "Question bank is empty" in capsys.readouterr().out
 
-    questions_file.write_text(json.dumps({"id": "1", "stem": "Q", "answer": "A", "choices": []}) + "\n", encoding="utf-8")
+    questions_file.write_text(
+        json.dumps({"id": "1", "stem": "Q", "answer": "A", "choices": []})
+        + "\n",
+        encoding="utf-8",
+    )
 
     recorded = {}
 
@@ -363,11 +436,21 @@ def test_main_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_main_dispatch_other_commands(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
-    monkeypatch.setattr(q_cli, "_cmd_topics_generate", lambda args: calls.append("tg") or 0)
-    monkeypatch.setattr(q_cli, "_cmd_topics_list", lambda args: calls.append("tl") or 0)
-    monkeypatch.setattr(q_cli, "_cmd_questions_generate", lambda args: calls.append("qg") or 0)
-    monkeypatch.setattr(q_cli, "_cmd_questions_list", lambda args: calls.append("ql") or 0)
-    monkeypatch.setattr(q_cli, "_cmd_start", lambda args: calls.append("start") or 0)
+    monkeypatch.setattr(
+        q_cli, "_cmd_topics_generate", lambda args: calls.append("tg") or 0
+    )
+    monkeypatch.setattr(
+        q_cli, "_cmd_topics_list", lambda args: calls.append("tl") or 0
+    )
+    monkeypatch.setattr(
+        q_cli, "_cmd_questions_generate", lambda args: calls.append("qg") or 0
+    )
+    monkeypatch.setattr(
+        q_cli, "_cmd_questions_list", lambda args: calls.append("ql") or 0
+    )
+    monkeypatch.setattr(
+        q_cli, "_cmd_start", lambda args: calls.append("start") or 0
+    )
     with pytest.raises(SystemExit) as exc:
         q_cli.main(["topics", "generate", "demo"])
     assert exc.value.code == 0
@@ -382,7 +465,9 @@ def test_main_dispatch_other_commands(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls == ["tg", "tl", "qg", "ql", "start"]
 
 
-def test_quizzer_dunder_main_invokes_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_quizzer_dunder_main_invokes_cli(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import importlib
 
     import study_utils.quizzer.__main__ as quiz_dunder

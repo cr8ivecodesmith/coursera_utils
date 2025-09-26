@@ -48,7 +48,9 @@ def test_iter_text_files_respects_level_limit(tmp_path: Path) -> None:
     assert shallow_files == ["top.txt"]
 
 
-def test_iter_text_files_requires_nonnegative_level_limit(tmp_path: Path) -> None:
+def test_iter_text_files_requires_nonnegative_level_limit(
+    tmp_path: Path,
+) -> None:
     with pytest.raises(ValueError):
         list(iter_text_files([tmp_path], {"txt"}, level_limit=-1))
 
@@ -59,12 +61,12 @@ def test_iter_text_files_errors_on_missing_path(tmp_path: Path) -> None:
         list(iter_text_files([missing], {"txt"}, level_limit=0))
 
 
-
 def test_iter_text_files_yields_matching_file(tmp_path: Path) -> None:
     target = tmp_path / "note.txt"
     target.write_text("hi", encoding="utf-8")
     result = list(iter_text_files([target], {"txt"}, level_limit=0))
     assert result == [target]
+
 
 def test_iter_text_files_skips_non_matching_extensions(tmp_path: Path) -> None:
     target = tmp_path / "note.md"
@@ -120,7 +122,9 @@ def test_order_files_by_modified(tmp_path: Path) -> None:
     assert ordered_desc == [newer, older]
 
 
-def test_order_files_by_created(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_order_files_by_created(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
     first.write_text("a", encoding="utf-8")

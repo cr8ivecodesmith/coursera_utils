@@ -7,7 +7,9 @@ from study_utils.core import ai
 from study_utils.core.ai import load_client
 
 
-def test_load_client_requires_openai_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_client_requires_openai_dependency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(ai, "OpenAI", None)
     with pytest.raises(RuntimeError) as exc:
         load_client()
@@ -30,5 +32,8 @@ def test_load_client_returns_stub_with_key(
     client = load_client()
     assert client is openai_factory.last
     assert openai_factory.last is not None
-    assert getattr(openai_factory.last, "init_kwargs", {}).get("api_key") == "test-key"
+    assert (
+        getattr(openai_factory.last, "init_kwargs", {}).get("api_key")
+        == "test-key"
+    )
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)

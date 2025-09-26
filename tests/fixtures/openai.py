@@ -1,9 +1,10 @@
 """OpenAI client stubs shared across tests.
 
 The production code imports ``from openai import OpenAI`` and expects the
-returned object to expose ``chat.completions.create``.  The test stub mirrors the
-minimal surface area so modules can run offline while exposing hooks to inspect
-requests and queue deterministic responses.
+returned object to expose ``chat.completions.create``.
+
+This stub mirrors the minimal surface area so modules can run offline while
+still exposing hooks to inspect requests and queue deterministic responses.
 """
 
 from __future__ import annotations
@@ -27,7 +28,9 @@ class Choice:
 class OpenAIStub:
     """Lightweight stand-in for ``OpenAI`` chat completion client."""
 
-    def __init__(self, *, side_effect: Optional[Callable[[Dict[str, Any]], Any]] = None):
+    def __init__(
+        self, *, side_effect: Optional[Callable[[Dict[str, Any]], Any]] = None
+    ):
         self.side_effect = side_effect
         self.calls: List[Dict[str, Any]] = []
         self.responses: List[str] = []
@@ -87,7 +90,9 @@ def _build_openai_module(factory: OpenAIStubFactory) -> ModuleType:
     return module
 
 
-def install_openai_stub_module(target: Optional[Dict[str, ModuleType]] = None) -> OpenAIStubFactory:
+def install_openai_stub_module(
+    target: Optional[Dict[str, ModuleType]] = None,
+) -> OpenAIStubFactory:
     """Install the stub ``openai`` module into ``sys.modules``.
 
     Returns the factory so callers can inspect the created client instances.

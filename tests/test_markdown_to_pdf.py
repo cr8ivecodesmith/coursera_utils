@@ -122,8 +122,9 @@ def test_iter_markdown_files_and_sort(tmp_path: Path) -> None:
     assert set(fallback) == set(files)
 
 
-
-def test_sort_files_created_and_modified(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_sort_files_created_and_modified(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     a = tmp_path / "a.md"
     b = tmp_path / "b.md"
     a.write_text("a", encoding="utf-8")
@@ -153,7 +154,14 @@ def test_sort_files_created_and_modified(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
 def test_render_markdown_with_headings_attr_fallback() -> None:
     class FakeToken:
-        def __init__(self, token_type: str, tag: str = "", content: str = "", attrs=None, mode: str = "normal"):
+        def __init__(
+            self,
+            token_type: str,
+            tag: str = "",
+            content: str = "",
+            attrs=None,
+            mode: str = "normal",
+        ):
             self.type = token_type
             self.tag = tag
             self.content = content
@@ -161,7 +169,7 @@ def test_render_markdown_with_headings_attr_fallback() -> None:
             self.mode = mode
             self._fail_handled = False
 
-        def attrSet(self, *_args, **_kwargs):
+        def attrSet(self, *_args, **_kwargs):  # noqa: N802 - matches markdown-it API
             raise RuntimeError("attrSet not available")
 
         @property
@@ -189,7 +197,9 @@ def test_render_markdown_with_headings_attr_fallback() -> None:
     class FakeRenderer:
         @staticmethod
         def render(tokens, _options, _env):
-            return "".join(getattr(t, "content", "") for t in tokens if t.type == "inline")
+            return "".join(
+                getattr(t, "content", "") for t in tokens if t.type == "inline"
+            )
 
     class FakeMarkdown:
         renderer = FakeRenderer()
@@ -200,7 +210,10 @@ def test_render_markdown_with_headings_attr_fallback() -> None:
 
     html, headings = mdp.render_markdown_with_headings(FakeMarkdown(), "", {})
     assert "First" in html and len(headings) == 4
-    assert isinstance(tokens[0].attrs, list) and tokens[0].attrs[0] == ["id", "first"]
+    assert isinstance(tokens[0].attrs, list) and tokens[0].attrs[0] == [
+        "id",
+        "first",
+    ]
     assert tokens[2].attrs["id"] == "second"
     assert tokens[4].attrs[0][1] == "third"
     assert tokens[6].attrs[-1] == ["id", "fourth"]
@@ -228,7 +241,9 @@ def test_build_toc_html_closes_nested_lists() -> None:
     assert toc.endswith("</ul>")
 
 
-def test_generate_ai_title_fields_regex_fallback(monkeypatch: pytest.MonkeyPatch, openai_factory) -> None:
+def test_generate_ai_title_fields_regex_fallback(
+    monkeypatch: pytest.MonkeyPatch, openai_factory
+) -> None:
     module = ModuleType("study_utils.transcribe_video")
 
     def fake_load_client():
@@ -242,7 +257,9 @@ def test_generate_ai_title_fields_regex_fallback(monkeypatch: pytest.MonkeyPatch
     assert fields.title == "Loose Title"
 
 
-def test_load_default_css_path_handles_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_default_css_path_handles_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_exists = Path.exists
 
     def fake_exists(self: Path) -> bool:
@@ -273,7 +290,9 @@ def test_build_stylesheets_without_custom_css() -> None:
     assert len(sheets) == 1 and sheets[0].string == page_css
 
 
-def test_iter_markdown_files_skips_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_iter_markdown_files_skips_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     missing = Path("/path/does/not/exist")
     assert list(iter_markdown_files([missing], level_limit=0)) == []
 
@@ -283,12 +302,16 @@ def test_default_highlight_css() -> None:
     assert ".highlight" in css
 
 
-def test_generate_ai_title_fields_success(monkeypatch: pytest.MonkeyPatch, openai_factory) -> None:
+def test_generate_ai_title_fields_success(
+    monkeypatch: pytest.MonkeyPatch, openai_factory
+) -> None:
     module = ModuleType("study_utils.transcribe_video")
 
     def fake_load_client():
         stub = openai_factory()
-        stub.queue_response('{"title": "AI Title", "subtitle": "AI Sub", "author": "AI"}')
+        stub.queue_response(
+            '{"title": "AI Title", "subtitle": "AI Sub", "author": "AI"}'
+        )
         return stub
 
     module.load_client = fake_load_client  # type: ignore[attr-defined]
@@ -301,7 +324,9 @@ def test_generate_ai_title_fields_success(monkeypatch: pytest.MonkeyPatch, opena
     assert fields.date_str
 
 
-def test_generate_ai_title_fields_handles_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_ai_title_fields_handles_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     module = ModuleType("study_utils.transcribe_video")
 
     def bad_client():
@@ -313,7 +338,9 @@ def test_generate_ai_title_fields_handles_failures(monkeypatch: pytest.MonkeyPat
     assert fields == TitleFields()
 
 
-def test_generate_ai_title_fields_chat_failure(monkeypatch: pytest.MonkeyPatch, openai_factory) -> None:
+def test_generate_ai_title_fields_chat_failure(
+    monkeypatch: pytest.MonkeyPatch, openai_factory
+) -> None:
     module = ModuleType("study_utils.transcribe_video")
 
     def fake_load_client():
@@ -323,7 +350,9 @@ def test_generate_ai_title_fields_chat_failure(monkeypatch: pytest.MonkeyPatch, 
                     @staticmethod
                     def create(**kwargs):
                         raise RuntimeError("nope")
+
                 completions = Completions()
+
             chat = Chat()
 
         return Client()
@@ -334,18 +363,21 @@ def test_generate_ai_title_fields_chat_failure(monkeypatch: pytest.MonkeyPatch, 
     assert fields == TitleFields()
 
 
-def test_generate_ai_title_fields_import_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_ai_title_fields_import_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     original_import = __import__
 
     def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if name.endswith('transcribe_video') or (name == 'study_utils' and 'transcribe_video' in fromlist):
-            raise ImportError('boom')
+        if name.endswith("transcribe_video") or (
+            name == "study_utils" and "transcribe_video" in fromlist
+        ):
+            raise ImportError("boom")
         return original_import(name, globals, locals, fromlist, level)
 
-    monkeypatch.setattr('builtins.__import__', fake_import)
-    fields = mdp.generate_ai_title_fields(sample_text='Sample')
+    monkeypatch.setattr("builtins.__import__", fake_import)
+    fields = mdp.generate_ai_title_fields(sample_text="Sample")
     assert fields == TitleFields()
-
 
     module = ModuleType("study_utils.transcribe_video")
 
@@ -392,11 +424,18 @@ def test_parse_markdown_args_parses_defaults() -> None:
 def test_collect_markdown_inputs_and_empty(tmp_path: Path) -> None:
     file_path = tmp_path / "doc.md"
     file_path.write_text("# Doc", encoding="utf-8")
-    args = Namespace(INPUTS=[str(tmp_path)], extensions=[], level_limit=0, sort="name")
+    args = Namespace(
+        INPUTS=[str(tmp_path)], extensions=[], level_limit=0, sort="name"
+    )
     files = mdp._collect_markdown_inputs(args)
     assert files == [file_path]
 
-    args_empty = Namespace(INPUTS=[str(tmp_path / "missing")], extensions=[], level_limit=0, sort="name")
+    args_empty = Namespace(
+        INPUTS=[str(tmp_path / "missing")],
+        extensions=[],
+        level_limit=0,
+        sort="name",
+    )
     with pytest.raises(SystemExit):
         mdp._collect_markdown_inputs(args_empty)
 
@@ -436,7 +475,9 @@ def test_render_markdown_parts_collects_samples(tmp_path: Path) -> None:
     assert "Content" in sample
 
 
-def test_build_title_page_html_merges_ai(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_title_page_html_merges_ai(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     args = Namespace(
         title_page=True,
         title="",
@@ -449,13 +490,17 @@ def test_build_title_page_html_merges_ai(monkeypatch: pytest.MonkeyPatch) -> Non
         ai_temperature=0.1,
         title_template=None,
     )
-    ai_fields = TitleFields(title="AI Title", subtitle="AI Sub", author="AI", date_str="2024-01-01")
+    ai_fields = TitleFields(
+        title="AI Title", subtitle="AI Sub", author="AI", date_str="2024-01-01"
+    )
     monkeypatch.setattr(mdp, "generate_ai_title_fields", lambda **_: ai_fields)
     html = mdp._build_title_page_html(args, sample_text="Hello")
     assert "AI Title" in html and "AI Sub" in html
 
 
-def test_print_dry_run_outputs_details(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_print_dry_run_outputs_details(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     args = Namespace(
         paper_size="letter",
         orientation="portrait",
@@ -503,11 +548,17 @@ def test_build_stylesheets(tmp_path: Path) -> None:
     assert sheets[1].filename == str((tmp_path / "styles.css").resolve())
 
 
-def test_main_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_dry_run(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     doc = tmp_path / "doc.md"
     doc.write_text("# Doc", encoding="utf-8")
 
-    monkeypatch.setattr(mdp, "generate_ai_title_fields", lambda **_: TitleFields())
+    monkeypatch.setattr(
+        mdp, "generate_ai_title_fields", lambda **_: TitleFields()
+    )
 
     argv = [
         "--dry-run",
@@ -521,19 +572,24 @@ def test_main_dry_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: p
     assert "Planned output" in captured.out
 
 
-def test_main_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     doc = tmp_path / "doc.md"
     doc.write_text("# Doc", encoding="utf-8")
 
-    monkeypatch.setattr(mdp, "generate_ai_title_fields", lambda **_: TitleFields())
+    monkeypatch.setattr(
+        mdp, "generate_ai_title_fields", lambda **_: TitleFields()
+    )
 
     argv = [
-        '--verbose',
+        "--verbose",
         str(tmp_path / "out.pdf"),
         str(doc),
     ]
     mdp.main(argv)
-    captured = capsys.readouterr()
 
     # ensure stub wrote PDF using the installed weasyprint stub
     html_cls = sys.modules["weasyprint"].HTML
@@ -541,7 +597,11 @@ def test_main_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: p
     assert calls and calls[0].target == tmp_path / "out.pdf"
 
 
-def test_main_handles_generation_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_handles_generation_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     doc = tmp_path / "doc.md"
     doc.write_text("# Doc", encoding="utf-8")
 

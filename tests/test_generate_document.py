@@ -19,7 +19,6 @@ def test_find_config_path_with_custom_missing(tmp_path: Path) -> None:
         gd.find_config_path(str(missing))
 
 
-
 def test_find_config_path_with_explicit_existing(tmp_path: Path) -> None:
     cfg = tmp_path / "custom.toml"
     cfg.write_text("[doc]\nprompt='Use'\n", encoding="utf-8")
@@ -36,12 +35,17 @@ def test_load_documents_config_empty_file(tmp_path: Path) -> None:
 
 def test_load_documents_config_mixed_entries(tmp_path: Path) -> None:
     cfg = tmp_path / "mixed.toml"
-    cfg.write_text("invalid = 1\n[skip]\nprompt = ''\n[ok]\nprompt = 'Do this'\n", encoding="utf-8")
+    cfg.write_text(
+        "invalid = 1\n[skip]\nprompt = ''\n[ok]\nprompt = 'Do this'\n",
+        encoding="utf-8",
+    )
     data = gd.load_documents_config(cfg)
     assert "ok" in data and data["ok"]["prompt"] == "Do this"
 
 
-def test_load_documents_config_import_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_load_documents_config_import_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     cfg = tmp_path / "doc.toml"
     cfg.write_text("[doc]\nprompt='Use me'\n", encoding="utf-8")
     original_import = __import__
@@ -56,14 +60,18 @@ def test_load_documents_config_import_failure(monkeypatch: pytest.MonkeyPatch, t
         gd.load_documents_config(cfg)
 
 
-def test_find_config_path_prefers_cwd(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_find_config_path_prefers_cwd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     cfg = tmp_path / "documents.toml"
     cfg.write_text("[doc]\nprompt='Use me'\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     assert gd.find_config_path(None) == cfg.resolve()
 
 
-def test_find_config_path_raises_when_no_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_find_config_path_raises_when_no_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls = []
 
     def fake_exists(self: Path) -> bool:
@@ -126,7 +134,9 @@ def test_generate_document_writes_output_with_stubbed_client(
     assert stub.calls  # ensure client was exercised
 
 
-def test_generate_document_unknown_type_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generate_document_unknown_type_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     p = tmp_path / "x.txt"
     p.write_text("X", encoding="utf-8")
     monkeypatch.setattr(gd, "load_client", lambda: object())
@@ -168,7 +178,11 @@ def test_generate_document_raises_when_ai_returns_empty(
         def __init__(self) -> None:
             message = SimpleNamespace(content=" ")
             choice = SimpleNamespace(message=message)
-            self.chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **_: SimpleNamespace(choices=[choice])))
+            self.chat = SimpleNamespace(
+                completions=SimpleNamespace(
+                    create=lambda **_: SimpleNamespace(choices=[choice])
+                )
+            )
 
     monkeypatch.setattr(gd, "load_client", EmptyClient)
     with pytest.raises(RuntimeError):
@@ -182,7 +196,12 @@ def test_generate_document_raises_when_ai_returns_empty(
         )
 
 
-def test_main_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, openai_factory, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    openai_factory,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     src_dir = tmp_path / "src"
     src_dir.mkdir()
     ref = src_dir / "ref.txt"
@@ -191,7 +210,13 @@ def test_main_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, openai_fa
     stub = openai_factory()
     stub.queue_response("# Title\n\nBody")
     monkeypatch.setattr(gd, "load_client", lambda: stub)
-    monkeypatch.setattr(gd, "parse_extensions", lambda values, default=None: gd.core_parse_extensions(values, default=default or {"txt", "md", "markdown"}))
+    monkeypatch.setattr(
+        gd,
+        "parse_extensions",
+        lambda values, default=None: gd.core_parse_extensions(
+            values, default=default or {"txt", "md", "markdown"}
+        ),
+    )
 
     out_path = tmp_path / "out.md"
     argv = [
@@ -205,9 +230,25 @@ def test_main_success(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, openai_fa
     assert out_path.exists()
 
 
-def test_main_handles_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    monkeypatch.setattr(gd, "parse_extensions", lambda values, default=None: gd.core_parse_extensions(values, default=default or {"txt", "md", "markdown"}))
-    argv = ["keywords", str(tmp_path / "out.md"), str(tmp_path), "--level-limit", "-1"]
+def test_main_handles_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        gd,
+        "parse_extensions",
+        lambda values, default=None: gd.core_parse_extensions(
+            values, default=default or {"txt", "md", "markdown"}
+        ),
+    )
+    argv = [
+        "keywords",
+        str(tmp_path / "out.md"),
+        str(tmp_path),
+        "--level-limit",
+        "-1",
+    ]
     with pytest.raises(SystemExit) as exc:
         gd.main(argv)
     assert exc.value.code == 2
@@ -215,14 +256,24 @@ def test_main_handles_errors(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, ca
     assert "Error:" in captured.out
 
 
-def test_main_handles_generation_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_handles_generation_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     ref = tmp_path / "ref.txt"
     ref.write_text("ref", encoding="utf-8")
 
     def fake_generate(**kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(gd, "parse_extensions", lambda values, default=None: gd.core_parse_extensions(values, default=default or {"txt", "md", "markdown"}))
+    monkeypatch.setattr(
+        gd,
+        "parse_extensions",
+        lambda values, default=None: gd.core_parse_extensions(
+            values, default=default or {"txt", "md", "markdown"}
+        ),
+    )
     monkeypatch.setattr(gd, "generate_document", fake_generate)
     argv = ["keywords", str(tmp_path / "out.md"), str(tmp_path)]
     with pytest.raises(SystemExit) as exc:

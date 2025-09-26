@@ -46,7 +46,9 @@ class WorkspaceBuilder:
         build_tree(self.root, tree)
         return self.root
 
-    def write(self, relative: Union[str, Path], content: Union[str, bytes]) -> Path:
+    def write(
+        self, relative: Union[str, Path], content: Union[str, bytes]
+    ) -> Path:
         path = self.root / Path(relative)
         path.parent.mkdir(parents=True, exist_ok=True)
         if isinstance(content, bytes):

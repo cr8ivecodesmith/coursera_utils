@@ -16,7 +16,9 @@ def _build_dotenv_module() -> ModuleType:
     return module
 
 
-def install_dotenv_stub_module(target: Optional[Dict[str, ModuleType]] = None) -> None:
+def install_dotenv_stub_module(
+    target: Optional[Dict[str, ModuleType]] = None,
+) -> None:
     import sys
 
     module = _build_dotenv_module()

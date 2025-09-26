@@ -25,7 +25,9 @@ class HTMLStub:
         self._string = string
         self._base_url = base_url
 
-    def write_pdf(self, *, target: str, stylesheets: Optional[List[Any]] = None) -> None:
+    def write_pdf(
+        self, *, target: str, stylesheets: Optional[List[Any]] = None
+    ) -> None:
         stylesheets = stylesheets or []
         record = GeneratedPDF(
             target=Path(target),
@@ -43,7 +45,9 @@ class HTMLStub:
 
 
 class CSSStub:
-    def __init__(self, *, string: Optional[str] = None, filename: Optional[str] = None) -> None:
+    def __init__(
+        self, *, string: Optional[str] = None, filename: Optional[str] = None
+    ) -> None:
         self.string = string
         self.filename = filename
 
@@ -55,7 +59,9 @@ def _build_weasyprint_module() -> ModuleType:
     return module
 
 
-def install_weasyprint_stub_module(target: Optional[Dict[str, ModuleType]] = None) -> None:
+def install_weasyprint_stub_module(
+    target: Optional[Dict[str, ModuleType]] = None,
+) -> None:
     import sys
 
     module = _build_weasyprint_module()

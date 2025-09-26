@@ -27,7 +27,9 @@ def _build_pydub_modules() -> Dict[str, ModuleType]:
     return {"pydub": audio_module, "pydub.utils": utils_module}
 
 
-def install_pydub_stub_modules(target: Optional[Dict[str, ModuleType]] = None) -> None:
+def install_pydub_stub_modules(
+    target: Optional[Dict[str, ModuleType]] = None,
+) -> None:
     import sys
 
     modules = _build_pydub_modules()

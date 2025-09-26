@@ -33,16 +33,30 @@ def test_find_video_files_variants(tmp_path: Path) -> None:
     assert set(recursive_files) == {video, deep}
 
 
-def test_find_video_files_invalid_type(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_find_video_files_invalid_type(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     special = tmp_path / "special"
     special.touch()
     original_exists = Path.exists
     original_is_file = Path.is_file
     original_is_dir = Path.is_dir
 
-    monkeypatch.setattr(Path, "exists", lambda self: True if self == special else original_exists(self))
-    monkeypatch.setattr(Path, "is_file", lambda self: False if self == special else original_is_file(self))
-    monkeypatch.setattr(Path, "is_dir", lambda self: False if self == special else original_is_dir(self))
+    monkeypatch.setattr(
+        Path,
+        "exists",
+        lambda self: True if self == special else original_exists(self),
+    )
+    monkeypatch.setattr(
+        Path,
+        "is_file",
+        lambda self: False if self == special else original_is_file(self),
+    )
+    monkeypatch.setattr(
+        Path,
+        "is_dir",
+        lambda self: False if self == special else original_is_dir(self),
+    )
 
     with pytest.raises(ValueError):
         tv.find_video_files(special)
@@ -50,7 +64,9 @@ def test_find_video_files_invalid_type(monkeypatch: pytest.MonkeyPatch, tmp_path
     # restore for safety (monkeypatch will undo on teardown)
 
 
-def test_default_names_cache_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_names_cache_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     dir_cache = tv.default_names_cache_path(tmp_path)
     assert dir_cache.name == ".transcribe_video_names.json"
 
@@ -99,10 +115,14 @@ def test_clean_segment_and_heuristic_name(tmp_path: Path) -> None:
     assert "module" in name.lower()
 
     outside = Path("/different/root/video.mp4")
-    assert tv.heuristic_smart_name(outside, tmp_path) == tv._clean_segment(outside.stem)
+    assert tv.heuristic_smart_name(outside, tmp_path) == tv._clean_segment(
+        outside.stem
+    )
 
 
-def test_ai_smart_name_success(monkeypatch: pytest.MonkeyPatch, openai_factory) -> None:
+def test_ai_smart_name_success(
+    monkeypatch: pytest.MonkeyPatch, openai_factory
+) -> None:
     stub = openai_factory()
     stub.queue_response("Title: Intro/Lesson?")
     result = tv.ai_smart_name(stub, Path("video.mp4"), Path("."))
@@ -116,7 +136,9 @@ def test_ai_smart_name_success(monkeypatch: pytest.MonkeyPatch, openai_factory) 
 
     failing = SimpleNamespace(
         chat=SimpleNamespace(
-            completions=SimpleNamespace(create=lambda **_: (_ for _ in ()).throw(RuntimeError("fail")))
+            completions=SimpleNamespace(
+                create=lambda **_: (_ for _ in ()).throw(RuntimeError("fail"))
+            )
         )
     )
     assert tv.ai_smart_name(failing, Path("video.mp4"), Path(".")) is None
@@ -144,7 +166,9 @@ class _FakeChunk:
         dest.write_text(f"chunk-{self.idx}", encoding="utf-8")
 
 
-def test_split_video_to_audio_segments(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_split_video_to_audio_segments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     records: list[str] = []
 
     class FakeAudio:
@@ -156,7 +180,9 @@ def test_split_video_to_audio_segments(tmp_path: Path, monkeypatch: pytest.Monke
     def fake_make_chunks(_audio, _size):
         return [_FakeChunk(0, records), _FakeChunk(1, records)]
 
-    monkeypatch.setattr(tv, "AudioSegment", SimpleNamespace(from_file=fake_from_file))
+    monkeypatch.setattr(
+        tv, "AudioSegment", SimpleNamespace(from_file=fake_from_file)
+    )
     monkeypatch.setattr(tv, "make_chunks", fake_make_chunks)
     monkeypatch.setattr(tv, "rmtree", lambda path: records.append(f"rm:{path}"))
 
@@ -200,8 +226,14 @@ def test_transcribe_audio_file(tmp_path: Path) -> None:
 
 
 def test_transcribe_video_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tv, "split_video_to_audio_segments", lambda path: [Path(f"seg_{i}.mp3") for i in range(2)])
-    monkeypatch.setattr(tv, "transcribe_audio_file", lambda client, seg: f"text-{seg}")
+    monkeypatch.setattr(
+        tv,
+        "split_video_to_audio_segments",
+        lambda path: [Path(f"seg_{i}.mp3") for i in range(2)],
+    )
+    monkeypatch.setattr(
+        tv, "transcribe_audio_file", lambda client, seg: f"text-{seg}"
+    )
     monkeypatch.setattr(tv, "sleep", lambda _: None)
     cleanup = []
     monkeypatch.setattr(tv, "rmtree", lambda path: cleanup.append(path))
@@ -225,17 +257,25 @@ def test_parse_prefix_parts_and_build_prefix() -> None:
 
 
 def test_make_output_filename() -> None:
-    base = tv.make_output_filename(Path("video.mp4"), 2, [("text", "Intro-")], "Smart")
+    base = tv.make_output_filename(
+        Path("video.mp4"), 2, [("text", "Intro-")], "Smart"
+    )
     assert base.startswith("Intro-")
 
 
 def test_discover_video_files_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(tv, "find_video_files", lambda *_: (_ for _ in ()).throw(ValueError("bad")))
+    monkeypatch.setattr(
+        tv,
+        "find_video_files",
+        lambda *_: (_ for _ in ()).throw(ValueError("bad")),
+    )
     with pytest.raises(SystemExit):
         tv._discover_video_files(Path("/tmp"), False)
 
 
-def test_handle_list_mode_plain(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_handle_list_mode_plain(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     args = SimpleNamespace(prefix=None, smart_names=False)
     file_paths = [tmp_path / "a.mp4"]
     for p in file_paths:
@@ -251,7 +291,11 @@ def test_handle_list_mode_empty(capsys: pytest.CaptureFixture[str]) -> None:
     assert "No .mp4 files" in capsys.readouterr().out
 
 
-def test_handle_list_mode_smart(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_handle_list_mode_smart(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     args = SimpleNamespace(
         prefix=None,
         smart_names=True,
@@ -266,7 +310,11 @@ def test_handle_list_mode_smart(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 
     monkeypatch.setattr(tv, "load_client", lambda: None)
     monkeypatch.setattr(tv, "save_names_cache", lambda *a, **k: None)
-    monkeypatch.setattr(tv, "build_name_mapping", lambda files, root, use_ai, client: {files[0]: "Name"})
+    monkeypatch.setattr(
+        tv,
+        "build_name_mapping",
+        lambda files, root, use_ai, client: {files[0]: "Name"},
+    )
     monkeypatch.setattr(tv, "cache_get_final", lambda entry: None)
 
     tv._handle_list_mode(args, files, tmp_path)
@@ -278,14 +326,30 @@ def test_prepare_output_dir(tmp_path: Path) -> None:
     assert out.exists()
 
 
-def test_prepare_names_for_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_prepare_names_for_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     video = tmp_path / "a.mp4"
     video.write_bytes(b"")
-    args = SimpleNamespace(smart_names=True, use_ai=False, names_file=None, refresh_names=False, prefix=None)
-    monkeypatch.setattr(tv, "_resolve_names_paths", lambda *a: (tmp_path, tmp_path / "names.json"))
+    args = SimpleNamespace(
+        smart_names=True,
+        use_ai=False,
+        names_file=None,
+        refresh_names=False,
+        prefix=None,
+    )
+    monkeypatch.setattr(
+        tv,
+        "_resolve_names_paths",
+        lambda *a: (tmp_path, tmp_path / "names.json"),
+    )
     monkeypatch.setattr(tv, "_load_existing_names", lambda *_: {})
     monkeypatch.setattr(tv, "_build_mapping_base", lambda *a: {video: "Base"})
-    monkeypatch.setattr(tv, "_combine_name_entries", lambda *a: {video: {"base": "Base", "final": "Base.txt"}})
+    monkeypatch.setattr(
+        tv,
+        "_combine_name_entries",
+        lambda *a: {video: {"base": "Base", "final": "Base.txt"}},
+    )
     monkeypatch.setattr(tv, "save_names_cache", lambda *a, **k: None)
     entries = tv._prepare_names_for_run(args, [video], tmp_path, None, None)
     assert entries[video]["final"].endswith(".txt")
@@ -294,13 +358,19 @@ def test_prepare_names_for_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     assert tv._prepare_names_for_run(args, [video], tmp_path, None, None) == {}
 
 
-def test_transcribe_videos(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_transcribe_videos(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     video = tmp_path / "a.mp4"
     video.write_bytes(b"")
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
-    monkeypatch.setattr(tv, "transcribe_video_file", lambda client, path: "text")
+    monkeypatch.setattr(
+        tv, "transcribe_video_file", lambda client, path: "text"
+    )
     monkeypatch.setattr(tv, "cache_get_final", lambda entry: entry.get("final"))
 
     entries = {video: {"base": "Base", "final": "Base.txt"}}
@@ -312,18 +382,26 @@ def test_transcribe_videos(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caps
     tv._transcribe_videos([video], object(), [], entries, out_dir, False)
     assert (out_dir / f"{video.stem}.txt").exists()
 
-    monkeypatch.setattr(tv, "transcribe_video_file", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(
+        tv,
+        "transcribe_video_file",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
     tv._transcribe_videos([video], object(), [], entries, out_dir, False)
 
 
 def test_resolve_names_paths(tmp_path: Path) -> None:
     target = tmp_path / "video.mp4"
     target.write_bytes(b"")
-    root, cache = tv._resolve_names_paths(SimpleNamespace(names_file=None), target)
+    root, cache = tv._resolve_names_paths(
+        SimpleNamespace(names_file=None), target
+    )
     assert cache.name.endswith(".json")
 
     custom = tmp_path / "cache.json"
-    root2, cache2 = tv._resolve_names_paths(SimpleNamespace(names_file=str(custom)), target)
+    root2, cache2 = tv._resolve_names_paths(
+        SimpleNamespace(names_file=str(custom)), target
+    )
     assert cache2 == custom
 
 
@@ -335,21 +413,31 @@ def test_load_existing_names(tmp_path: Path) -> None:
     assert list(data.keys())[0] == tmp_path / "a.mp4"
 
 
-def test_build_mapping_base(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_build_mapping_base(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     files = [tmp_path / "a.mp4"]
     for f in files:
         f.write_bytes(b"")
     args = SimpleNamespace(smart_names=True, use_ai=True, refresh_names=True)
-    monkeypatch.setattr(tv, "build_name_mapping", lambda *a, **k: {files[0]: "Name"})
+    monkeypatch.setattr(
+        tv, "build_name_mapping", lambda *a, **k: {files[0]: "Name"}
+    )
     mapping = tv._build_mapping_base(args, files, tmp_path, object(), {})
     assert mapping
 
     args.refresh_names = False
-    monkeypatch.setattr(tv, "build_name_mapping", lambda files, root, use_ai, client: {files[0]: "Missing"})
+    monkeypatch.setattr(
+        tv,
+        "build_name_mapping",
+        lambda files, root, use_ai, client: {files[0]: "Missing"},
+    )
     mapping2 = tv._build_mapping_base(args, files, tmp_path, object(), {})
     assert mapping2
 
-    mapping3 = tv._build_mapping_base(args, files, tmp_path, object(), {files[0]: {}})
+    mapping3 = tv._build_mapping_base(
+        args, files, tmp_path, object(), {files[0]: {}}
+    )
     assert mapping3 == {}
 
     args.smart_names = False
@@ -377,7 +465,11 @@ def test_combine_name_entries(tmp_path: Path) -> None:
     assert "b" in combined[video2]["base"].lower()
 
 
-def test_main_list_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_list_mode(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     target = tmp_path / "video.mp4"
     target.write_bytes(b"")
     args = SimpleNamespace(
@@ -396,7 +488,11 @@ def test_main_list_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys:
     assert "->" in capsys.readouterr().out
 
 
-def test_main_no_videos(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_no_videos(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     args = SimpleNamespace(
         TARGET=str(tmp_path),
         output_dir=None,
@@ -419,13 +515,24 @@ def test_main_no_videos(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys:
 def test_parse_transcribe_args(monkeypatch: pytest.MonkeyPatch) -> None:
     import sys
 
-    argv = ["transcribe-video", "target.mp4", "--list", "--prefix", "text:Intro", "--smart-names"]
+    argv = [
+        "transcribe-video",
+        "target.mp4",
+        "--list",
+        "--prefix",
+        "text:Intro",
+        "--smart-names",
+    ]
     monkeypatch.setattr(sys, "argv", argv)
     args = tv._parse_transcribe_args()
     assert args.list_only and args.smart_names and args.prefix == ["text:Intro"]
 
 
-def test_main_transcribe_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_transcribe_flow(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     args = SimpleNamespace(
         TARGET=str(tmp_path),
         output_dir=str(tmp_path / "out"),
