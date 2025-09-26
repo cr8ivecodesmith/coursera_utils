@@ -51,6 +51,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="List available vector databases.",
     )
 
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        help="Show manifest details for a vector database.",
+    )
+    inspect_parser.add_argument(
+        "--name",
+        required=True,
+        help="Name of the vector database to inspect.",
+    )
+
     delete_parser = subparsers.add_parser(
         "delete",
         help="Delete a vector database from the data directory.",
@@ -261,6 +271,17 @@ def _handle_list(args: argparse.Namespace) -> int:  # noqa: ARG001
     return 0
 
 
+def _handle_inspect(args: argparse.Namespace) -> int:
+    repo = _build_repository()
+    try:
+        manifest = repo.load_manifest(args.name)
+    except vector_store.VectorStoreError as exc:
+        _print_error(str(exc))
+        return 2
+    _print_manifest_details(manifest)
+    return 0
+
+
 def _handle_delete(args: argparse.Namespace) -> int:
     repo = _build_repository()
     try:
@@ -383,6 +404,34 @@ def _print_ingest_report(
     print(f"  manifest: {manifest_path}")
 
 
+def _print_manifest_details(manifest: vector_store.VectorStoreManifest) -> None:
+    print(f"Name: {manifest.name}")
+    print(f"Created: {manifest.created_at}")
+    print(f"Updated: {manifest.updated_at}")
+    print(f"Schema: {manifest.schema_version}")
+    print("Embedding:")
+    print(f"  provider: {manifest.embedding.provider}")
+    print(f"  model: {manifest.embedding.model}")
+    print(f"  dimension: {manifest.embedding.dimension}")
+    print("Chunking:")
+    print(f"  tokenizer: {manifest.chunking.tokenizer}")
+    print(f"  encoding: {manifest.chunking.encoding}")
+    print(f"  tokens_per_chunk: {manifest.chunking.tokens_per_chunk}")
+    print(f"  token_overlap: {manifest.chunking.token_overlap}")
+    print(f"  fallback_delimiter: {manifest.chunking.fallback_delimiter}")
+    print("Deduplication:")
+    print(f"  strategy: {manifest.dedupe.strategy}")
+    print(f"  checksum_algorithm: {manifest.dedupe.checksum_algorithm}")
+    print(f"Documents: {len(manifest.documents)}")
+    if not manifest.documents:
+        return
+    for doc in manifest.documents:
+        print(f"- {doc.source_path}")
+        print(f"  checksum: {doc.checksum}")
+        print(f"  size_bytes: {doc.size_bytes}")
+        print(f"  chunks: {doc.chunk_count}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _build_parser()
     try:
@@ -394,6 +443,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "config": _handle_config,
         "ingest": _handle_ingest,
         "list": _handle_list,
+        "inspect": _handle_inspect,
         "delete": _handle_delete,
         "export": _handle_export,
         "import": _handle_import,

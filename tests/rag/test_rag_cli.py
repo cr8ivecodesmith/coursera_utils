@@ -208,6 +208,58 @@ def test_list_export_import_delete_flow(tmp_path, rag_cli_env, capsys):
     assert store_dir.exists()
 
 
+def test_inspect_command_prints_manifest(tmp_path, rag_cli_env, capsys):
+    source = tmp_path / "doc.txt"
+    source.write_text("sample text", encoding="utf-8")
+    assert rag_cli.main(["ingest", "--name", "physics", str(source)]) == 0
+    capsys.readouterr()
+
+    exit_code = rag_cli.main(["inspect", "--name", "physics"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Name: physics" in output
+    assert "Documents:" in output
+    assert str(source) in output
+
+
+def test_inspect_handles_empty_documents(monkeypatch, capsys):
+    manifest = vector_store.build_manifest(
+        name="physics",
+        embedding=vector_store.EmbeddingMetadata(
+            provider="openai",
+            model="test",
+            dimension=2,
+        ),
+        chunking=vector_store.ChunkingMetadata(
+            tokenizer="tiktoken",
+            encoding="cl100k_base",
+            tokens_per_chunk=10,
+            token_overlap=0,
+            fallback_delimiter="\n\n",
+        ),
+        dedupe=vector_store.DedupMetadata(
+            strategy="checksum",
+            checksum_algorithm="sha256",
+        ),
+        documents=(),
+    )
+
+    class StubRepo:
+        def load_manifest(self, name):  # noqa: D401
+            assert name == "physics"
+            return manifest
+
+    monkeypatch.setattr(rag_cli, "_build_repository", lambda: StubRepo())
+
+    exit_code = rag_cli.main(["inspect", "--name", "physics"])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "Documents: 0" in out
+    assert "- " not in out
+
+
 def test_ingest_handles_config_error(monkeypatch, capsys):
     monkeypatch.setattr(
         config_mod,
@@ -245,6 +297,17 @@ def test_list_handles_empty(monkeypatch, capsys):
     assert exit_code == 0
     out = capsys.readouterr().out
     assert "No vector databases" in out
+
+
+def test_inspect_handles_missing_manifest(monkeypatch, capsys):
+    repo = vector_store.VectorStoreRepository(Path("unused"))
+    monkeypatch.setattr(rag_cli, "_build_repository", lambda: repo)
+
+    exit_code = rag_cli.main(["inspect", "--name", "physics"])
+
+    assert exit_code == 2
+    err = capsys.readouterr().err
+    assert "Manifest missing" in err
 
 
 def test_delete_missing_store(monkeypatch, capsys):

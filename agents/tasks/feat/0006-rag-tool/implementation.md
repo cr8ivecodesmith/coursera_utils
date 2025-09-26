@@ -71,6 +71,13 @@
 - Extend existing runbook with instructions for clearing caches, exporting/importing DBs, and recovering sessions.
 
 ## History
+### 2025-09-29 09:30
+**Summary**
+Polished Milestone 2 by implementing the remaining inspect workflow.
+**Changes**
+- Added `study rag inspect` CLI support to display manifest metadata and document provenance.
+- Extended CLI tests to cover inspect success and error messaging.
+
 ### 2025-09-28 14:10
 **Summary**
 Delivered Milestone 2: ingestion pipeline, vector store management commands, and supporting tests.

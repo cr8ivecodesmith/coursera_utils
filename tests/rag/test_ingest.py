@@ -348,7 +348,6 @@ def test_text_chunker_encoder_handles_empty_tokens(monkeypatch):
     assert chunker.chunk("text") == []
 
 
-
 def test_collect_chunks_skips_empty_files(tmp_path, chunker, dedupe_meta):
     empty = _make_file(tmp_path / "empty.txt", "   ")
     texts, metadatas, documents, skipped = ingest._collect_chunks(
