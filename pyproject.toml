@@ -78,6 +78,5 @@ max-doc-length = 120
 max-complexity = 10
 
 [tool.pytest.ini_options]
-addopts = "-q -n auto --cov=study_utils --cov-report=term-missing --cov-report=xml --maxfail=1"
+addopts = "-q -n auto --cov=study_utils --cov-report=term-missing --cov-report=xml --cov-fail-under=100 --maxfail=1"
 testpaths = ["tests"]
-

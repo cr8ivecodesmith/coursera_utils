@@ -36,11 +36,11 @@ We will raise the repository’s Python test coverage from 56% to a stable 100% 
 - Revert: to undo, remove or relax the coverage gate and delete the added fixture modules (not expected unless blockers arise).
 
 ## Definition of Done
-- [ ] Behavior verified (100% coverage, gate green locally and in CI)
-- [ ] Docs updated (testing/fixtures guidance)
-- [ ] Tests added/updated (unit, CLI, utility seams)
+- [x] Behavior verified (100% coverage, gate green locally and in CI)
+- [x] Docs updated (testing/fixtures guidance)
+- [x] Tests added/updated (unit, CLI, utility seams)
 - [ ] Flags defaulted per channel (n/a)
-- [ ] Monitoring in place (coverage gate scripted)
+- [x] Monitoring in place (coverage gate scripted)
 
 ## Ownership
 - Owner: @matt

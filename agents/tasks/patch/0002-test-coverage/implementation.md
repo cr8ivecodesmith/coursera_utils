@@ -46,7 +46,7 @@
   - [x] **Milestone 3 – Document generation & markdown pipeline**: expand tests across `generate_document.py` and `markdown_to_pdf.py` helpers/CLI; stub WeasyPrint interactions; verify partial coverage jump; commit.
   - [x] **Milestone 4 – Quizzer domain**: cover `quizzer/utils.py`, CLI command handlers, manager (question generation, topic extraction), and view helpers with deterministic seeds/mocks; add minimal CLI smoke tests; commit.
   - [x] **Milestone 5 – Text utilities & transcription**: add tests for `text_combiner.py` and `transcribe_video.py` including smart naming, cache IO, CLI flows, and AI fallbacks; ensure deterministic chunking via patched pydub; commit.
-  - [ ] **Milestone 6 – Final hardening & gate**: sweep remaining uncovered lines (CLI `__main__` modules, residual branches), enable `--cov-fail-under=100`, add documentation updates, confirm CI alignment, and perform final commit.
+  - [x] **Milestone 6 – Final hardening & gate**: sweep remaining uncovered lines (CLI `__main__` modules, residual branches), enable `--cov-fail-under=100`, add documentation updates, confirm CI alignment, and perform final commit.
 
 ## Test Plan
 - Unit: cover every helper/branch listed above using parametrized tests and patched dependencies.
@@ -104,3 +104,11 @@ Milestone 5 text utilities & transcription coverage complete.
 - Added targeted unit suites for `text_combiner` and `transcribe_video` covering parser helpers, AI fallbacks, chunking workflow, and CLI exit codes.
 - Patched module guards with `# pragma: no cover` to avoid artificial CLI misses.
 - Verified pytest coverage now fully green for both modules (overall 99% ahead of final shim cleanup).
+
+### 2025-09-26 22:45
+**Summary**
+Milestone 6 final hardening & coverage gate complete.
+**Changes**
+- Added a lightweight test for `quizzer.__main__` to eliminate the final uncovered shim.
+- Enabled the 100% coverage gate via `--cov-fail-under=100` in `pyproject.toml` and confirmed `just test` inherits it.
+- Documented the testing workflow and fixtures in `README.md`; pytest runs now enforce the coverage floor locally and in CI.

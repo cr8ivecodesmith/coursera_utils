@@ -381,3 +381,17 @@ def test_main_dispatch_other_commands(monkeypatch: pytest.MonkeyPatch) -> None:
         q_cli.main(["start", "demo"])
     assert calls == ["tg", "tl", "qg", "ql", "start"]
 
+
+def test_quizzer_dunder_main_invokes_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    import study_utils.quizzer.__main__ as quiz_dunder
+
+    def fake_main() -> None:
+        raise SystemExit(0)
+
+    monkeypatch.setattr(q_cli, "main", fake_main)
+    module = importlib.reload(quiz_dunder)
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+    assert exc.value.code == 0

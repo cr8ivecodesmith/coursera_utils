@@ -12,6 +12,18 @@ online courses and self-directed learning.
   managing Python versions and virtual environments. Install Python 3.12 with
   `pyenv` and create a virtual environment before running the tooling.
 
+## Testing
+
+- Run `uv run pytest` (or `just test`) to execute the full suite. Coverage is
+  enforced at 100% via `pytest-cov`; any regression will fail the run.
+- The tests run entirely offline by default. Shared fixtures under
+  `tests/fixtures/` provide stubs for OpenAI, WeasyPrint, dotenv, and pydub to
+  keep runs deterministic.
+- For local debugging you can generate a detailed report with
+  `uv run pytest --cov-report=term-missing`. To temporarily relax the coverage
+  gate while debugging, drop `--cov-fail-under=100` from `pyproject.toml` and
+  restore it before committing.
+
 ## System requirements
 
 ### OS Requirements (Ubuntu)
