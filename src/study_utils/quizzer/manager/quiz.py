@@ -6,7 +6,8 @@ from pathlib import Path
 from collections import defaultdict
 from typing import Optional, List, Sequence, Tuple, Iterable, Dict, Any
 
-from ..utils import load_client, _slugify
+from ...core import load_client
+from ..utils import _slugify
 
 
 def _topic_source_paths(topic: Dict[str, object]) -> List[Path]:

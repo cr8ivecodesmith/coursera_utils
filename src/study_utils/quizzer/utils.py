@@ -2,25 +2,11 @@ import re
 import json
 
 from pathlib import Path
-from typing import Optional, List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
-try:  # shared helpers for file discovery and AI access
-    from ..core import (
-        iter_text_files,
-        load_client,
-        parse_extensions,
-        read_text_file,
-    )  # type: ignore
-except Exception:  # pragma: no cover - fallback for alternate execution
-    try:
-        from study_utils.core import (
-            iter_text_files,
-            load_client,
-            parse_extensions,
-            read_text_file,
-        )  # type: ignore
-    except Exception:  # pragma: no cover - final fallback when unavailable
-        load_client = None  # type: ignore
+# Shared helpers for file discovery; CLI consolidation no longer supports
+# standalone module execution paths.
+from ..core import iter_text_files, parse_extensions, read_text_file
 
 
 _slug_re = re.compile(r"[^a-z0-9]+")

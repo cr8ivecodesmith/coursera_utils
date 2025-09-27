@@ -8,11 +8,6 @@ import pytest
 import study_utils.generate_document as gd
 
 
-def test_parse_extensions_defaults_and_normalization() -> None:
-    assert gd.parse_extensions(None) == {"txt", "md", "markdown"}
-    assert gd.parse_extensions([".TXT", "Md"]) == {"txt", "md"}
-
-
 def test_find_config_path_with_custom_missing(tmp_path: Path) -> None:
     missing = tmp_path / "missing.toml"
     with pytest.raises(FileNotFoundError):
@@ -210,14 +205,6 @@ def test_main_success(
     stub = openai_factory()
     stub.queue_response("# Title\n\nBody")
     monkeypatch.setattr(gd, "load_client", lambda: stub)
-    monkeypatch.setattr(
-        gd,
-        "parse_extensions",
-        lambda values, default=None: gd.core_parse_extensions(
-            values, default=default or {"txt", "md", "markdown"}
-        ),
-    )
-
     out_path = tmp_path / "out.md"
     argv = [
         "keywords",
@@ -235,13 +222,6 @@ def test_main_handles_errors(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setattr(
-        gd,
-        "parse_extensions",
-        lambda values, default=None: gd.core_parse_extensions(
-            values, default=default or {"txt", "md", "markdown"}
-        ),
-    )
     argv = [
         "keywords",
         str(tmp_path / "out.md"),
@@ -267,13 +247,6 @@ def test_main_handles_generation_failure(
     def fake_generate(**kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        gd,
-        "parse_extensions",
-        lambda values, default=None: gd.core_parse_extensions(
-            values, default=default or {"txt", "md", "markdown"}
-        ),
-    )
     monkeypatch.setattr(gd, "generate_document", fake_generate)
     argv = ["keywords", str(tmp_path / "out.md"), str(tmp_path)]
     with pytest.raises(SystemExit) as exc:

@@ -19,27 +19,16 @@ import argparse
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 
 # Discovery utilities are shared via the core package for consistent behavior
-try:
-    from .core import (
-        iter_text_files,
-        parse_extensions as core_parse_extensions,
-        read_text_file,
-    )  # type: ignore
-except Exception:  # pragma: no cover - fallback when executed differently
-    from study_utils.core import (  # type: ignore
-        iter_text_files,
-        parse_extensions as core_parse_extensions,
-        read_text_file,
-    )
-
-try:  # Prefer relative import for src/ layout
-    from .core import load_client  # type: ignore
-except Exception:  # pragma: no cover - fallback when executed differently
-    from study_utils.core import load_client  # type: ignore
+from .core import (
+    iter_text_files,
+    load_client,
+    parse_extensions,
+    read_text_file,
+)
 
 
 # -----------------------------
@@ -58,15 +47,6 @@ class GenerateOptions:
 # -----------------------------
 # Parsing helpers
 # -----------------------------
-
-
-def parse_extensions(
-    values: Optional[Sequence[str]],
-    default: Optional[Iterable[str]] = None,
-) -> Set[str]:
-    """Normalize extensions while preserving historical defaults."""
-    fallback = default or {"txt", "md", "markdown"}
-    return core_parse_extensions(values, default=fallback)
 
 
 def find_config_path(arg: Optional[str]) -> Path:

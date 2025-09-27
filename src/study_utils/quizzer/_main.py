@@ -3,6 +3,7 @@ import random
 from pathlib import Path
 from typing import Optional, Sequence
 
+from ..core import load_client
 from .utils import (
     _find_config,
     _load_toml,
@@ -11,7 +12,6 @@ from .utils import (
     iter_quiz_files,
     write_jsonl,
     read_jsonl,
-    load_client,
 )
 
 from .manager.quiz import generate_questions, extract_topics

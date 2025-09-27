@@ -6,11 +6,6 @@ from pathlib import Path
 import study_utils.text_combiner as tc
 
 
-def test_parse_extensions_defaults_and_normalization():
-    assert tc.parse_extensions(None) == {"txt"}
-    assert tc.parse_extensions([".txt", "MD"]) == {"txt", "md"}
-
-
 def test_iter_text_files_with_level_limit_and_extensions(tmp_path: Path):
     # layout:
     # root/

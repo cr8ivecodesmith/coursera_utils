@@ -27,10 +27,7 @@ from jinja2 import Environment, FileSystemLoader, Template
 from markdown_it import MarkdownIt
 from pygments.formatters import HtmlFormatter
 
-try:
-    from .core import iter_text_files, parse_extensions  # type: ignore
-except Exception:  # pragma: no cover - fallback for alternate execution
-    from study_utils.core import iter_text_files, parse_extensions  # type: ignore
+from .core import iter_text_files, parse_extensions
 
 
 # ------------- Types and constants -------------

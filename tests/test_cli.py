@@ -1,5 +1,6 @@
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -197,6 +198,135 @@ def test_dispatch_normalizes_non_int_return(monkeypatch):
     monkeypatch.setattr(cli, "import_module", fake_import)
     code = cli.main(["transcribe-video"])
     assert code == 0
+
+
+def test_cli_generate_document_invokes_subcommand_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import study_utils.generate_document as gd
+
+    config = tmp_path / "documents.toml"
+    config.write_text("[keywords]\nprompt='Use me'\n", encoding="utf-8")
+    src_dir = tmp_path / "refs"
+    src_dir.mkdir()
+    ref = src_dir / "note.txt"
+    ref.write_text("Reference", encoding="utf-8")
+    out_path = tmp_path / "out.md"
+
+    captured: dict[str, object] = {}
+
+    def fake_generate_document(**kwargs):
+        captured.update(kwargs)
+        return 2
+
+    monkeypatch.setattr(gd, "generate_document", fake_generate_document)
+    monkeypatch.chdir(tmp_path)
+
+    code = cli.main(
+        [
+            "generate-document",
+            "keywords",
+            str(out_path),
+            str(src_dir),
+        ]
+    )
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Generated document" in out
+    assert captured["extensions"] == {"txt", "md", "markdown"}
+    assert captured["inputs"] == [src_dir.resolve()]
+    assert captured["output_path"] == out_path.resolve()
+    assert captured["config_path"] == config.resolve()
+
+
+def test_cli_text_combiner_invokes_subcommand_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import study_utils.text_combiner as tc
+
+    source = tmp_path / "a.txt"
+    source.write_text("Alpha", encoding="utf-8")
+    out_path = tmp_path / "combined.txt"
+
+    captured: dict[str, object] = {}
+
+    def fake_iter_text_files(inputs, extensions, level_limit):
+        captured["iter_extensions"] = set(extensions)
+        return [source]
+
+    def fake_order_files(files, order_by):
+        captured["order_by"] = order_by
+        return list(files)
+
+    def fake_combine_files(files, output_path, options):
+        captured["options"] = options
+        output_path.write_text("done", encoding="utf-8")
+        return len(files)
+
+    monkeypatch.setattr(tc, "iter_text_files", fake_iter_text_files)
+    monkeypatch.setattr(tc, "order_files", fake_order_files)
+    monkeypatch.setattr(tc, "combine_files", fake_combine_files)
+
+    code = cli.main(["text-combiner", str(out_path), str(source)])
+
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "Combined 1 file(s)" in out
+    assert captured["iter_extensions"] == {"txt"}
+    options = captured["options"]
+    assert options.extensions == {"txt"}
+    assert options.combine_by == "NEW"
+    assert options.level_limit == 0
+    assert out_path.read_text(encoding="utf-8") == "done"
+
+
+def test_cli_markdown_to_pdf_invokes_subcommand_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import study_utils.markdown_to_pdf as mdp
+
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    doc = docs / "doc.md"
+    doc.write_text("# Title", encoding="utf-8")
+    out_path = tmp_path / "out.pdf"
+
+    captured: dict[str, object] = {}
+
+    def fake_iter_text_files(paths, extensions, level_limit):
+        captured["extensions"] = set(extensions)
+        yield doc
+
+    monkeypatch.setattr(mdp, "iter_text_files", fake_iter_text_files)
+    monkeypatch.setattr(mdp, "default_highlight_css", lambda *_: "css")
+    monkeypatch.setattr(mdp, "build_markdown_it", lambda _: object())
+    monkeypatch.setattr(
+        mdp,
+        "_render_markdown_parts",
+        lambda files, md: ([("doc", "<p>Body</p>")], "sample"),
+    )
+    monkeypatch.setattr(
+        mdp, "_build_title_page_html", lambda args, sample: None
+    )
+    monkeypatch.setattr(mdp, "_print_dry_run", lambda args, files, out: None)
+
+    code = cli.main(
+        [
+            "markdown-to-pdf",
+            str(out_path),
+            str(docs),
+            "--dry-run",
+        ]
+    )
+
+    assert code == 0
+    assert captured["extensions"] == {"md", "markdown"}
 
 
 def test_dispatch_supports_varargs_main(monkeypatch):
