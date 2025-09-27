@@ -1,21 +1,21 @@
 """Utilities for resolving the Study RAG data directory layout.
 
-All runtime artifacts (configs, vector DBs, sessions, logs) live under a
-user-scoped data home. The default is ``~/.study-utils-data`` but callers can
-override it with the ``STUDY_UTILS_DATA_HOME`` environment variable. Each
-helper here is side-effect free unless ``create=True`` is passed, in which case
-the required directories are created with user-only permissions when the
-platform allows it.
+All runtime artifacts (configs, vector DBs, sessions, logs) live under the
+shared study-utils workspace. The workspace helper lives in
+``study_utils.core.workspace``; this module keeps the existing API surface for
+RAG-specific callers while delegating to the shared implementation so that
+other tools (e.g., convert-markdown) operate over the same directory tree.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Mapping, MutableMapping
 
+from study_utils.core import workspace
 
-DATA_HOME_ENV = "STUDY_UTILS_DATA_HOME"
+
+DATA_HOME_ENV = workspace.WORKSPACE_ENV
 DEFAULT_DATA_HOME = Path.home() / ".study-utils-data"
 
 _SUBDIRS = {
@@ -30,88 +30,50 @@ class DataDirError(RuntimeError):
     """Raised when the data home cannot be resolved or created."""
 
 
-def _coerce_env(env: Mapping[str, str] | None) -> Mapping[str, str]:
-    if env is None:
-        return os.environ
-    return env
-
-
-def _chmod_safe(path: Path, mode: int) -> None:
+def _resolve_layout(
+    *, env: Mapping[str, str] | None, create: bool
+) -> workspace.WorkspaceLayout:
     try:
-        path.chmod(mode)
-    except (NotImplementedError, PermissionError):
-        # Some filesystems ignore chmod (e.g., Windows, mounted drives). Allow
-        # execution to continue so callers still receive a usable directory.
-        return
+        if env is None:
+            return workspace.ensure_workspace(create=create, subdirs=_SUBDIRS)
 
-
-def _ensure_dir(path: Path, mode: int) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
-    _chmod_safe(path, mode)
-    return path
-
-
-def _resolve_base(env: Mapping[str, str]) -> Path:
-    override = env.get(DATA_HOME_ENV)
-    if override is not None:
-        override = override.strip()
-    if override:
-        base = Path(override).expanduser()
-    else:
-        base = DEFAULT_DATA_HOME
-    try:
-        return base.expanduser().resolve()
-    except FileNotFoundError:
-        # ``resolve`` on some systems requires parents to exist when strict.
-        # Re-run without resolving parents by returning the absolute variant.
-        return base.expanduser().absolute()
-
-
-def _validate_dir_candidate(path: Path) -> None:
-    if path.exists() and not path.is_dir():
-        raise DataDirError(
-            "Configured data home already exists and is not a directory: "
-            f"{path}"
+        override = env.get(DATA_HOME_ENV)
+        if override is not None:
+            override = override.strip()
+        base_path = (
+            Path(override).expanduser() if override else DEFAULT_DATA_HOME
         )
+        return workspace.ensure_workspace(
+            path=base_path,
+            create=create,
+            subdirs=_SUBDIRS,
+        )
+    except workspace.WorkspaceError as exc:  # pragma: no cover - passthrough
+        raise DataDirError(str(exc)) from exc
 
 
 def get_data_home(
     *, env: Mapping[str, str] | None = None, create: bool = True
 ) -> Path:
-    """Return the resolved data home directory, optionally creating it.
+    """Return the resolved data home directory, optionally creating it."""
 
-    Args:
-        env: Optional mapping of environment variables. Defaults to
-            ``os.environ`` when omitted to ease testing.
-        create: When ``True`` (default), ensure the directory exists and apply
-            secure permissions where possible.
-    """
-
-    env_map = _coerce_env(env)
-    base = _resolve_base(env_map)
-    _validate_dir_candidate(base)
-    if create:
-        _ensure_dir(base, 0o700)
-        for key in _SUBDIRS.values():
-            _ensure_dir(base / key, 0o700)
-    return base
+    layout = _resolve_layout(env=env, create=create)
+    return layout.home
 
 
 def require_subdir(
     name: str, *, env: Mapping[str, str] | None = None, create: bool = True
 ) -> Path:
-    """Return a named subdirectory inside the data home.
+    """Return a named subdirectory inside the data home."""
 
-    ``name`` must be one of the logical keys in ``_SUBDIRS``.
-    """
+    try:
+        _ = _SUBDIRS[name]
+    except KeyError as exc:  # pragma: no cover - guard for misuse
+        raise KeyError(f"Unknown data subdir '{name}'.") from exc
 
-    if name not in _SUBDIRS:
-        raise KeyError(f"Unknown data subdir '{name}'.")
-    base = get_data_home(env=env, create=create)
-    target = base / _SUBDIRS[name]
-    if create:
-        _ensure_dir(target, 0o700)
-    elif target.exists() and not target.is_dir():
+    layout = _resolve_layout(env=env, create=create)
+    target = layout.path_for(name)
+    if not create and target.exists() and not target.is_dir():
         raise DataDirError(
             f"Expected a directory for '{name}' but found a file: {target}"
         )

@@ -16,6 +16,13 @@ from .files import (
     read_text_file,
 )
 from .logging import JsonLogFormatter, configure_logger
+from .workspace import (
+    WORKSPACE_ENV,
+    WorkspaceError,
+    WorkspaceLayout,
+    ensure_workspace,
+    describe_layout,
+)
 
 __all__ = [
     "load_client",
@@ -29,4 +36,9 @@ __all__ = [
     "read_text_file",
     "configure_logger",
     "JsonLogFormatter",
+    "ensure_workspace",
+    "describe_layout",
+    "WorkspaceLayout",
+    "WorkspaceError",
+    "WORKSPACE_ENV",
 ]

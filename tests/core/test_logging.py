@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import tempfile
 from pathlib import Path
 
 from study_utils.core import logging as core_logging
@@ -129,6 +130,42 @@ def test_configure_logger_fallback_file(tmp_path, monkeypatch):
     for handler in list(logger.handlers):
         handler.close()
         logger.removeHandler(handler)
+
+
+def test_configure_logger_rotating_handler_fallback(tmp_path, monkeypatch):
+    calls = {"count": 0}
+    fallback_dir = tmp_path / "rotate-fallback"
+    original_handler = core_logging.RotatingFileHandler
+
+    def fake_handler(path, *args, **kwargs):  # noqa: D401, ANN001
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise PermissionError("denied")
+        return original_handler(path, *args, **kwargs)
+
+    monkeypatch.setattr(core_logging, "RotatingFileHandler", fake_handler)
+    monkeypatch.setattr(core_logging, "_fallback_log_dir", lambda: fallback_dir)
+
+    logger, log_path = core_logging.configure_logger(
+        "study_utils.test_rotating_fallback",
+        log_dir=tmp_path / "primary",
+        filename="rotate.log",
+    )
+
+    assert log_path.parent == fallback_dir
+    assert calls["count"] == 2
+
+    for handler in list(logger.handlers):
+        handler.close()
+        logger.removeHandler(handler)
+
+
+def test_fallback_log_dir_uses_tempdir(tmp_path, monkeypatch):
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+
+    path = core_logging._fallback_log_dir()
+
+    assert path == tmp_path / "study-utils-logs"
 
 
 def test_console_handler_toggle(tmp_path):

@@ -50,7 +50,7 @@
 - Architecture/pattern choices: follow CLI module conventions (`study_utils/<feature>/cli.py` registering Typer/argparse). Keep pure conversion helpers in `converter.py`, orchestrate IO in CLI. Use `patterns-and-architecture.md` recommendation for composition, injecting converter + storage seams while keeping execution serial for clarity. Centralize packaged template access via the shared `study_utils.core.config_templates` helper so all commands pull from a single registry of bundled templates.
 - DI & boundaries: expose top-level `convert_documents(options)` accepting dependencies (markitdown instance, logging hook, time provider) for easier testing. Config loader returns a dataclass consumed by CLI and enforces precedence (CLI overrides > environment variables > TOML defaults). Sequential executor consumes file list, sorts normalized paths before processing, and invokes the converter with deterministic logging. Keep YAML front matter assembly isolated in `output.py` so converter backends stay pure.
 - Stepwise checklist:
-  - [ ] Introduce shared workspace bootstrap module and wire new `study init` (plus `study config` if warranted), landing the helper + verification tests first, then repointing existing RAG commands once the seam is proven.
+  - [x] Introduce shared workspace bootstrap module and wire new `study init` (plus `study config` if warranted), landing the helper + verification tests first, then repointing existing RAG commands once the seam is proven. (Implemented `study_utils.core.workspace`, added `study init`, and migrated RAG tooling/tests.)
   - [ ] Scaffold `convert_markdown` package with config loader, workspace resolver hook, and CLI skeleton registered in `study_utils.cli`.
   - [ ] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
   - [ ] Implement sequential executor and result aggregation, ensuring logging remains ordered and Ruff lint passes with zero errors.
@@ -83,3 +83,11 @@ Adjusted implementation plan for shared workspace bootstrap and serial execution
 - Added `study init`/`study config` workstream and shared bootstrap risks.
 - Removed multiprocessing references in favor of deterministic serial processing.
 - Updated solution/test plans and source impact to include workspace refactor and sequential executor.
+
+### 2025-03-18 09:15
+**Summary**
+Implemented shared workspace helper and CLI bootstrap.
+**Changes**
+- Added `study_utils.core.workspace` with reusable layout resolver and fallback handling.
+- Introduced `study init` CLI (`study_utils.workspace.cli`) and registered it with `study` entry point.
+- Migrated RAG data-dir helpers to the shared workspace module and added unit/CLI coverage ensuring 100% test pass.

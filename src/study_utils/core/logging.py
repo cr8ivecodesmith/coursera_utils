@@ -90,9 +90,10 @@ def configure_logger(
     log_name = filename or f"{name.rsplit('.', 1)[-1]}.log"
     file_path = _prepare_log_file(target_dir, log_name)
 
-    file_handler = _ensure_file_handler(
+    file_handler, file_path = _ensure_file_handler(
         logger=logger,
         path=file_path,
+        filename=log_name,
         max_bytes=max_bytes,
         backup_count=backup_count,
     )
@@ -118,27 +119,40 @@ def _ensure_file_handler(
     *,
     logger: logging.Logger,
     path: Path,
+    filename: str,
     max_bytes: int,
     backup_count: int,
-) -> RotatingFileHandler:
+) -> tuple[RotatingFileHandler, Path]:
     managed: RotatingFileHandler | None = None
     for handler in logger.handlers:
         if getattr(handler, "_study_utils_file", False):
             managed = handler  # type: ignore[assignment]
             break
     if managed is None:
-        managed = RotatingFileHandler(
-            path,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8",
-        )
+        try:
+            managed = RotatingFileHandler(
+                path,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+            )
+            active_path = path
+        except PermissionError:
+            fallback_dir = _prepare_log_dir(_fallback_log_dir())
+            active_path = _prepare_log_file(fallback_dir, filename)
+            managed = RotatingFileHandler(
+                active_path,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+            )
         managed.setFormatter(JsonLogFormatter())
         managed._study_utils_file = True  # type: ignore[attr-defined]
         logger.addHandler(managed)
     else:
         managed.baseFilename = str(path)
-    return managed
+        active_path = path
+    return managed, Path(active_path)
 
 
 def _enable_console_handler(logger: logging.Logger) -> None:
@@ -200,3 +214,7 @@ def _prepare_log_file(log_dir: Path, filename: str) -> Path:
     except PermissionError:  # pragma: no cover - depends on filesystem
         pass
     return path
+
+
+def _fallback_log_dir() -> Path:
+    return Path(tempfile.gettempdir()) / "study-utils-logs"

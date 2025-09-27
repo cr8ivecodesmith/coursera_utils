@@ -24,6 +24,16 @@ class CommandSpec:
 
 _COMMAND_SPECS: Sequence[CommandSpec] = (
     CommandSpec(
+        name="init",
+        summary="Bootstrap the shared study-utils workspace.",
+        handler=lambda argv: _run_module_command(
+            "study_utils.workspace.cli",
+            "main",
+            "study init",
+            argv,
+        ),
+    ),
+    CommandSpec(
         name="transcribe-video",
         summary="Transcribe MP4 videos into plain text with Whisper.",
         handler=lambda argv: _run_module_command(

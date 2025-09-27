@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
+from study_utils.core import workspace
 from study_utils.rag import data_dir
 
 
@@ -115,3 +117,23 @@ def test_get_data_home_uses_default_when_env_missing(tmp_path, monkeypatch):
     monkeypatch.setattr(data_dir, "DEFAULT_DATA_HOME", tmp_path / "default")
     home = data_dir.get_data_home(env={})
     assert home == (tmp_path / "default").resolve()
+
+
+def test_require_subdir_create_false_guard(tmp_path, monkeypatch):
+    file_path = tmp_path / "config-file"
+    file_path.write_text("not a directory", encoding="utf-8")
+
+    layout = workspace.WorkspaceLayout(
+        home=tmp_path,
+        directories=MappingProxyType({"config": file_path}),
+        created=MappingProxyType({"home": False, "config": False}),
+    )
+
+    monkeypatch.setattr(
+        data_dir,
+        "_resolve_layout",
+        lambda env=None, create=False: layout,
+    )
+
+    with pytest.raises(data_dir.DataDirError):
+        data_dir.config_dir(create=False)
