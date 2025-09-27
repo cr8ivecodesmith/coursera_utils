@@ -1,5 +1,13 @@
 # AGENTS Guidelines
 
+## Workflow Reminders
+
+- Before adressing any task, ensure you have read `agents/guides/workflow.md` and the relevant
+  templates in `agents/guides/workflow-extras/`.
+- Always review the task's `spec.md` and `implementation.md` (if present) to understand the scope
+  and requirements. If these documents are missing or unclear, seek clarification before proceeding.
+- Implementation logs should include a step-by-step checklist capturing verification of 100% pytest coverage and resolution of all Ruff findings prior to completion.
+
 ## Directory Overview
 
 - `agents/guides/`: Core reference material on engineering practice, patterns, style, and workflow.
@@ -18,3 +26,4 @@
   - `spec(-mini)-tpl.md`: Full and lightweight task specs.
 
 Use these references when scoping new work, reviewing deliverables, or aligning implementation details with existing expectations.
+
