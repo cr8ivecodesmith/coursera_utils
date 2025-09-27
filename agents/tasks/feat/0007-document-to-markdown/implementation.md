@@ -51,7 +51,7 @@
 - DI & boundaries: expose top-level `convert_documents(options)` accepting dependencies (markitdown instance, logging hook, time provider) for easier testing. Config loader returns a dataclass consumed by CLI and enforces precedence (CLI overrides > environment variables > TOML defaults). Sequential executor consumes file list, sorts normalized paths before processing, and invokes the converter with deterministic logging. Keep YAML front matter assembly isolated in `output.py` so converter backends stay pure.
 - Stepwise checklist:
   - [x] Introduce shared workspace bootstrap module and wire new `study init` (plus `study config` if warranted), landing the helper + verification tests first, then repointing existing RAG commands once the seam is proven. (Implemented `study_utils.core.workspace`, added `study init`, and migrated RAG tooling/tests.)
-  - [ ] Scaffold `convert_markdown` package with config loader, workspace resolver hook, and CLI skeleton registered in `study_utils.cli`.
+  - [x] Scaffold `convert_markdown` package with config loader, workspace resolver hook, and CLI skeleton registered in `study_utils.cli`.
   - [ ] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
   - [ ] Implement sequential executor and result aggregation, ensuring logging remains ordered and Ruff lint passes with zero errors.
   - [ ] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
@@ -91,3 +91,11 @@ Implemented shared workspace helper and CLI bootstrap.
 - Added `study_utils.core.workspace` with reusable layout resolver and fallback handling.
 - Introduced `study init` CLI (`study_utils.workspace.cli`) and registered it with `study` entry point.
 - Migrated RAG data-dir helpers to the shared workspace module and added unit/CLI coverage ensuring 100% test pass.
+
+### 2025-03-18 11:20
+**Summary**
+Introduced convert-markdown scaffolding with shared configuration loader.
+**Changes**
+- Added `study_utils.convert_markdown` package with config loader, CLI skeleton, and public exports.
+- Registered `study convert-markdown` command in `src/study_utils/cli.py` using the new scaffolding.
+- Created comprehensive unit tests for configuration precedence/error paths and CLI behavior, keeping pytest coverage at 100%.

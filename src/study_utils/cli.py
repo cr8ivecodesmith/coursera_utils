@@ -34,6 +34,16 @@ _COMMAND_SPECS: Sequence[CommandSpec] = (
         ),
     ),
     CommandSpec(
+        name="convert-markdown",
+        summary="Convert documents into Markdown outputs.",
+        handler=lambda argv: _run_module_command(
+            "study_utils.convert_markdown.cli",
+            "main",
+            "study convert-markdown",
+            argv,
+        ),
+    ),
+    CommandSpec(
         name="transcribe-video",
         summary="Transcribe MP4 videos into plain text with Whisper.",
         handler=lambda argv: _run_module_command(
