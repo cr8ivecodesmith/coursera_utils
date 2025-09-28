@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from study_utils import cli
+from study_utils.core import config_templates
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +62,8 @@ def test_list_outputs_command_table(capsys):
     # The table should include the known command names.
     assert "transcribe-video" in captured.out
     assert "markdown-to-pdf" in captured.out
+    assert "convert-markdown" in captured.out
+    assert "init" in captured.out
 
 
 def test_help_known_command(capsys):
@@ -198,6 +201,40 @@ def test_dispatch_normalizes_non_int_return(monkeypatch):
     monkeypatch.setattr(cli, "import_module", fake_import)
     code = cli.main(["transcribe-video"])
     assert code == 0
+
+
+def test_study_cli_runs_init_end_to_end(tmp_path, capsys):
+    target = tmp_path / "workspace"
+
+    code = cli.main(["init", "--path", str(target)])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert "Workspace ready" in captured.out
+    assert target.is_dir()
+    for entry in ("config", "logs", "converted"):
+        assert (target / entry).is_dir()
+
+
+def test_study_cli_runs_convert_markdown_config_init(tmp_path, capsys):
+    destination = tmp_path / "convert_markdown.toml"
+
+    code = cli.main(
+        [
+            "convert-markdown",
+            "config",
+            "init",
+            "--path",
+            str(destination),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert destination.exists()
+    template = config_templates.get_template("convert_markdown")
+    assert destination.read_text(encoding="utf-8") == template.read_text()
+    assert str(destination.resolve()) in captured.out
 
 
 def test_cli_generate_document_invokes_subcommand_defaults(

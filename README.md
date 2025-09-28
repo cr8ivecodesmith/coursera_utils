@@ -24,6 +24,19 @@ online courses and self-directed learning.
   gate while debugging, drop `--cov-fail-under=100` from `pyproject.toml` and
   restore it before committing.
 
+## Workspace and configuration
+
+- Run `study init` to bootstrap the shared workspace (defaults to
+  `~/.study-utils-data`). The command creates `converted/`, `logs/`, and
+  `config/` directories and accepts `--path` for alternate locations.
+- Configuration files live under `<workspace>/config`. Use
+  `study convert-markdown config init` to scaffold `convert_markdown.toml` with
+  documented defaults. Pass `--workspace` to target a specific workspace or
+  `--path`/`--force` for fully custom destinations.
+- All CLI entry points respect the `STUDY_UTILS_DATA_HOME` environment
+  variable when resolving the workspace; if unset they fall back to the default
+  directory created by `study init`.
+
 ## System requirements
 
 ### OS Requirements (Ubuntu)
@@ -42,6 +55,9 @@ To enable video transcription, ensure ffmpeg is installed (pydub uses it under t
 Notes:
 - The PDF generator uses WeasyPrint only; Pandoc/LaTeX is not required.
 - Transcription and document generation that leverage AI require `OPENAI_API_KEY` (supports `.env`).
+- Document conversion depends on `markitdown` (PDF/DOCX/HTML/TXT) and
+  `unstructured` (EPUB). Install them with `uv sync` or `pip install`
+  `markitdown unstructured` when running the CLI outside this repository.
 
 ## Gather materials for a module
 
@@ -71,11 +87,20 @@ flags.
     - `study markdown-to-pdf out.pdf notes.md --toc --paper-size a4`
     - `study markdown-to-pdf out.pdf docs/ --level-limit 2 --margin "1in 0.75in"`
     - `study markdown-to-pdf out.pdf README.md --title-page --title "My Guide" --author "Me"`
+- `study init [options]`
+  - Provision the shared workspace directory and any missing subdirectories.
+  - Examples:
+    - `study init`
+    - `study init --path /tmp/study-utils`
 - `study convert-markdown PATHS... [options]`
   - Convert PDFs, DOCX, HTML, TXT, and EPUB files into Markdown outputs with
     YAML front matter while preserving basenames.
-  - Use `study convert-markdown config init` to scaffold the default
-    `convert_markdown.toml` in the workspace config directory.
+  - Default outputs land in `<workspace>/converted`; use `--output-dir` or the
+    TOML config to redirect elsewhere.
+  - Respects layered config precedence (CLI flags > environment variables >
+    `convert_markdown.toml`).
+  - Use `study convert-markdown config init` to scaffold the default template in
+    the workspace config directory.
   - Examples:
     - `study convert-markdown ./docs --extensions pdf docx`
     - `study convert-markdown config init --workspace ~/.study-utils-data`

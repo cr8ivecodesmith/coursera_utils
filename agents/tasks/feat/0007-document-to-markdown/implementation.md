@@ -55,7 +55,7 @@
   - [x] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
   - [x] Implement sequential executor and result aggregation, wire CLI summary output, and confirm Ruff + pytest (100% coverage) stay green.
   - [x] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
-  - [ ] Update user docs/README, finalize integration tests for CLI flows (including `study init`), run full test suite (100% coverage) and Ruff one last time before completion.
+  - [x] Update user docs/README, finalize integration tests for CLI flows (including `study init`), run full test suite (100% coverage) and Ruff one last time before completion.
   - [ ] Confirm pytest coverage remains at 100% and Ruff reports no violations (final verification per workflow reminder).
 
 ## Test Plan
@@ -122,3 +122,11 @@ Implemented config init scaffolding and template packaging for convert-markdown.
 - Added shared `core.config_templates` registry and bundled `convert_markdown` TOML template.
 - Wired `study convert-markdown config init` with workspace-aware path resolution, updated README, and included template in package data.
 - Extended unit tests for template helpers and CLI error paths; re-ran Ruff and pytest (100% coverage) before completion.
+
+### 2025-03-19 18:20
+**Summary**
+Documented workspace defaults and added CLI integration coverage.
+**Changes**
+- Updated README with workspace bootstrap guidance, config layering details, and converter dependency notes.
+- Added top-level `study` CLI tests covering `study init` and `study convert-markdown config init` dispatch plus command listings.
+- Ran Ruff (`UV_CACHE_DIR=.uv-cache uv run ruff check`) and pytest (`UV_CACHE_DIR=.uv-cache uv run pytest`), confirming 100% coverage and zero lint violations.
