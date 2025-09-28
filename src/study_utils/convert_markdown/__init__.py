@@ -2,6 +2,17 @@
 
 from __future__ import annotations
 
+from .converter import (
+    ConversionError,
+    ConversionOutcome,
+    ConversionStatus,
+    ConverterDependencies,
+    DependencyError,
+    UnsupportedFormatError,
+    convert_file,
+    SUPPORTED_EXTENSIONS,
+)
+
 from .config import (
     CollisionPolicy,
     ConfigOverrides,
@@ -12,6 +23,14 @@ from .config import (
 )
 
 __all__ = [
+    "ConversionError",
+    "ConversionOutcome",
+    "ConversionStatus",
+    "ConverterDependencies",
+    "DependencyError",
+    "UnsupportedFormatError",
+    "convert_file",
+    "SUPPORTED_EXTENSIONS",
     "CollisionPolicy",
     "ConfigOverrides",
     "ConvertMarkdownConfig",

@@ -52,7 +52,7 @@
 - Stepwise checklist:
   - [x] Introduce shared workspace bootstrap module and wire new `study init` (plus `study config` if warranted), landing the helper + verification tests first, then repointing existing RAG commands once the seam is proven. (Implemented `study_utils.core.workspace`, added `study init`, and migrated RAG tooling/tests.)
   - [x] Scaffold `convert_markdown` package with config loader, workspace resolver hook, and CLI skeleton registered in `study_utils.cli`.
-  - [ ] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
+  - [x] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
   - [ ] Implement sequential executor and result aggregation, ensuring logging remains ordered and Ruff lint passes with zero errors.
   - [ ] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
   - [ ] Update user docs/README, finalize integration tests for CLI flows (including `study init`), run full test suite (100% coverage) and Ruff one last time before completion.
@@ -99,3 +99,11 @@ Introduced convert-markdown scaffolding with shared configuration loader.
 - Added `study_utils.convert_markdown` package with config loader, CLI skeleton, and public exports.
 - Registered `study convert-markdown` command in `src/study_utils/cli.py` using the new scaffolding.
 - Created comprehensive unit tests for configuration precedence/error paths and CLI behavior, keeping pytest coverage at 100%.
+### 2025-03-19 09:30
+**Summary**
+Implemented conversion pipeline with front matter and collision handling.
+**Changes**
+- Added `converter.py` and `output.py` with markitdown/unstructured seams, YAML front matter serialization, and collision policy support (skip/overwrite/version).
+- Exported pipeline APIs via `study_utils.convert_markdown.__init__` and wired helper constants.
+- Added exhaustive unit coverage for conversion success, skips, failures, timestamp normalization, and collision edge cases; verified Ruff and pytest (100% coverage).
+
