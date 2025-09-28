@@ -7,12 +7,16 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from study_utils.core.logging import configure_logger
+
 from .config import (
     CollisionPolicy,
     ConfigOverrides,
     ConvertMarkdownConfigError,
     load_config,
 )
+from .converter import ConverterDependencies, DependencyError
+from .executor import ExecutionSummary, run_conversion
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -87,7 +91,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     try:
-        load_config(
+        load_result = load_config(
             config_path=args.config,
             overrides=overrides,
             workspace_path=args.workspace,
@@ -95,12 +99,52 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ConvertMarkdownConfigError as exc:
         parser.error(str(exc))
 
-    message = (
-        "convert-markdown scaffolding ready; conversion pipeline is pending "
-        "implementation."
+    try:
+        dependencies = _build_dependencies()
+    except DependencyError as exc:
+        sys.stderr.write(str(exc) + "\n")
+        return 1
+
+    logger, log_path = configure_logger(
+        "study_utils.convert_markdown",
+        log_dir=load_result.layout.path_for("logs"),
+        level=load_result.config.log_level,
     )
-    sys.stdout.write(message + "\n")
-    return 0
+    # Avoid duplicate log handlers when invoked repeatedly (e.g., tests).
+    logger.debug("convert-markdown CLI invoked")
+
+    summary = run_conversion(
+        args.paths,
+        config=load_result.config,
+        dependencies=dependencies,
+        logger=logger,
+    )
+
+    _print_summary(summary, log_path, load_result.config.output_dir)
+    return summary.exit_code
+
+
+def _build_dependencies() -> ConverterDependencies:
+    """Return the default conversion dependency seams."""
+
+    raise DependencyError(
+        "Conversion backends not yet available. "
+        "Install optional dependencies or provide custom seams."
+    )
+
+
+def _print_summary(
+    summary: ExecutionSummary, log_path: Path, output_dir: Path
+) -> None:
+    lines = [
+        "convert-markdown summary:",
+        "  converted: {0}".format(summary.success_count),
+        "  skipped:   {0}".format(summary.skipped_count),
+        "  failed:    {0}".format(summary.failure_count),
+        "  output dir: {0}".format(output_dir),
+        "  log file:   {0}".format(log_path),
+    ]
+    sys.stdout.write("\n".join(str(line) for line in lines) + "\n")
 
 
 def _collision_from_args(args: argparse.Namespace) -> CollisionPolicy | None:

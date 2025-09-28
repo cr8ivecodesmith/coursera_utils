@@ -13,6 +13,8 @@ from .converter import (
     SUPPORTED_EXTENSIONS,
 )
 
+from .executor import ExecutionSummary, run_conversion
+
 from .config import (
     CollisionPolicy,
     ConfigOverrides,
@@ -37,4 +39,6 @@ __all__ = [
     "ConvertMarkdownConfigError",
     "LoadResult",
     "load_config",
+    "ExecutionSummary",
+    "run_conversion",
 ]
