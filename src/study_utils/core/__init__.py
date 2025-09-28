@@ -9,6 +9,12 @@ from .config import (
     merge_defaults,
     write_toml_template,
 )
+from .config_templates import (
+    ConfigTemplate,
+    ConfigTemplateError,
+    get_template,
+    iter_templates,
+)
 from .files import (
     parse_extensions,
     iter_text_files,
@@ -30,6 +36,10 @@ __all__ = [
     "load_toml",
     "merge_defaults",
     "write_toml_template",
+    "ConfigTemplate",
+    "ConfigTemplateError",
+    "get_template",
+    "iter_templates",
     "parse_extensions",
     "iter_text_files",
     "order_files",

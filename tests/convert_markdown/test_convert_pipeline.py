@@ -52,7 +52,7 @@ def test_convert_file_markitdown_success(tmp_path):
     assert text.startswith("---\n")
     assert 'source_path: "' in text
     assert 'converted_at: "2025-03-18T14:00:00Z"' in text
-    assert '# Title' in text
+    assert "# Title" in text
 
 
 def test_convert_file_epub_uses_fallback(tmp_path):

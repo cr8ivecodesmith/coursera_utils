@@ -14,12 +14,14 @@ from .output import render_document
 # Supported extensions mapped to the underlying conversion backend. The default
 # config mirrors these values, but the pipeline keeps the authoritative list so
 # callers can validate inputs before dispatching work.
-_MARKITDOWN_EXTENSIONS: frozenset[str] = frozenset({
-    "pdf",
-    "docx",
-    "html",
-    "txt",
-})
+_MARKITDOWN_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        "pdf",
+        "docx",
+        "html",
+        "txt",
+    }
+)
 _EPUB_EXTENSIONS: frozenset[str] = frozenset({"epub"})
 
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset(
@@ -105,9 +107,7 @@ def _convert_file(
     if not normalized_source.exists():
         raise ConversionError(f"Source file not found: {normalized_source}")
     if not normalized_source.is_file():
-        raise ConversionError(
-            f"Source path is not a file: {normalized_source}"
-        )
+        raise ConversionError(f"Source path is not a file: {normalized_source}")
 
     extension = _normalize_extension(normalized_source)
     if extension in _MARKITDOWN_EXTENSIONS:
@@ -185,9 +185,7 @@ def _resolve_output_path(
         return base, None, None
 
     if collision is CollisionPolicy.SKIP:
-        reason = (
-            "Output already exists and collision policy is 'skip'."
-        )
+        reason = "Output already exists and collision policy is 'skip'."
         return base, ConversionStatus.SKIPPED, reason
 
     if collision is CollisionPolicy.OVERWRITE:
@@ -195,15 +193,11 @@ def _resolve_output_path(
 
     if collision is not CollisionPolicy.VERSION:
         policy_value = getattr(collision, "value", str(collision))
-        raise ConversionError(
-            f"Unsupported collision policy: {policy_value}"
-        )
+        raise ConversionError(f"Unsupported collision policy: {policy_value}")
 
     counter = 1
     while True:
-        candidate = base.with_name(
-            f"{base.stem}-{counter:02d}{base.suffix}"
-        )
+        candidate = base.with_name(f"{base.stem}-{counter:02d}{base.suffix}")
         if not candidate.exists():
             return candidate, None, None
         counter += 1

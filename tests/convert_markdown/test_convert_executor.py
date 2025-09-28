@@ -204,4 +204,3 @@ def test_run_conversion_ignores_directory_files_without_extension(
 
     assert summary.outcomes == ()
     assert summary.processed == ()
-

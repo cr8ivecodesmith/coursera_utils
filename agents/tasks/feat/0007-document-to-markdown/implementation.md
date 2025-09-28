@@ -54,7 +54,7 @@
   - [x] Scaffold `convert_markdown` package with config loader, workspace resolver hook, and CLI skeleton registered in `study_utils.cli`.
   - [x] Implement conversion pipeline (markitdown path, EPUB fallback, YAML front matter injection, version/overwrite handling) with unit tests and ensure pytest coverage at 100%.
   - [x] Implement sequential executor and result aggregation, wire CLI summary output, and confirm Ruff + pytest (100% coverage) stay green.
-  - [ ] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
+  - [x] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
   - [ ] Update user docs/README, finalize integration tests for CLI flows (including `study init`), run full test suite (100% coverage) and Ruff one last time before completion.
   - [ ] Confirm pytest coverage remains at 100% and Ruff reports no violations (final verification per workflow reminder).
 
@@ -115,3 +115,10 @@ Delivered sequential executor with CLI wiring and aggregation summary.
 - Replaced CLI scaffolding with real execution path hooking logger setup, dependency seams, and summary output.
 - Expanded test suite with executor coverage (directory walking, collision skips, fallback paths) plus updated CLI tests; re-ran Ruff and full pytest to confirm 100% coverage.
 
+### 2025-03-19 16:05
+**Summary**
+Implemented config init scaffolding and template packaging for convert-markdown.
+**Changes**
+- Added shared `core.config_templates` registry and bundled `convert_markdown` TOML template.
+- Wired `study convert-markdown config init` with workspace-aware path resolution, updated README, and included template in package data.
+- Extended unit tests for template helpers and CLI error paths; re-ran Ruff and pytest (100% coverage) before completion.

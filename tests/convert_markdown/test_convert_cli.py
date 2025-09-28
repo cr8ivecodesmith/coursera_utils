@@ -8,14 +8,15 @@ import pytest
 from study_utils.convert_markdown import cli
 from study_utils.convert_markdown import config as cfg
 from study_utils.convert_markdown import converter
-from study_utils.core.workspace import WorkspaceLayout
+from study_utils.core import config_templates
+from study_utils.core.workspace import WorkspaceError, WorkspaceLayout
 
 
 class DummyLogger:
     def __init__(self) -> None:
-        self.messages: list[tuple[
-            str, tuple[object, ...], dict[str, object]
-        ]] = []
+        self.messages: list[
+            tuple[str, tuple[object, ...], dict[str, object]]
+        ] = []
 
     def debug(self, *args, **kwargs) -> None:
         self.messages.append(("debug", args, kwargs))
@@ -255,7 +256,101 @@ def test_cli_reports_dependency_errors(monkeypatch, capsys):
     assert captured.err.strip() == "install markitdown"
 
 
-
 def test_build_dependencies_placeholder_raises():
     with pytest.raises(converter.DependencyError):
         cli._build_dependencies()
+
+
+def test_cli_config_init_writes_template(tmp_path: Path, capsys):
+    template = config_templates.get_template("convert_markdown")
+    code = cli.main(
+        [
+            "config",
+            "init",
+            "--workspace",
+            str(tmp_path),
+        ]
+    )
+
+    assert code == 0
+    target = tmp_path / "config" / cfg.CONFIG_FILENAME
+    assert target.exists()
+    assert target.read_text(encoding="utf-8") == template.read_text()
+
+    captured = capsys.readouterr()
+    assert str(target) in captured.out
+    assert captured.err == ""
+
+
+def test_cli_config_init_path_override_requires_force(
+    tmp_path: Path, capsys
+) -> None:
+    template = config_templates.get_template("convert_markdown")
+    custom = tmp_path / "custom.toml"
+    custom.write_text("existing", encoding="utf-8")
+
+    code = cli.main(
+        [
+            "config",
+            "init",
+            "--path",
+            str(custom),
+        ]
+    )
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "Config already exists" in captured.err
+    assert custom.read_text(encoding="utf-8") == "existing"
+
+    code = cli.main(
+        [
+            "config",
+            "init",
+            "--path",
+            str(custom),
+            "--force",
+        ]
+    )
+
+    assert code == 0
+    assert custom.read_text(encoding="utf-8") == template.read_text()
+
+    captured = capsys.readouterr()
+    assert str(custom) in captured.out
+
+
+def test_cli_config_init_relative_path(monkeypatch, tmp_path: Path, capsys):
+    monkeypatch.chdir(tmp_path)
+    code = cli.main(
+        [
+            "config",
+            "init",
+            "--path",
+            "local.toml",
+        ]
+    )
+
+    assert code == 0
+    target = tmp_path / "local.toml"
+    assert target.exists()
+
+    captured = capsys.readouterr()
+    assert str(target.resolve()) in captured.out
+
+
+def test_cli_config_init_workspace_error(monkeypatch, capsys):
+    def fail_workspace(*_args, **_kwargs):
+        raise WorkspaceError("workspace boom")
+
+    monkeypatch.setattr(
+        cli.workspace_mod,
+        "ensure_workspace",
+        fail_workspace,
+    )
+
+    code = cli.main(["config", "init"])
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "workspace boom" in captured.err

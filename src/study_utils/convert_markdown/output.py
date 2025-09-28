@@ -14,8 +14,7 @@ def render_document(
     """Render Markdown with YAML front matter built from ``metadata``."""
 
     serialized = {
-        key: _serialize_value(value)
-        for key, value in metadata.items()
+        key: _serialize_value(value) for key, value in metadata.items()
     }
 
     front_matter_lines = ["---"]

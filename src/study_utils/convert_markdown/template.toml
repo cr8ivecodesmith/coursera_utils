@@ -1,0 +1,20 @@
+# Study Utils convert-markdown configuration template.
+# Generated via `study convert-markdown config init`.
+
+[paths]
+# Override the output directory for Markdown outputs.
+# Provide an absolute path or one relative to the workspace root.
+# Set to null to keep the workspace `converted` directory.
+output_dir = null
+
+[execution]
+# Extensions to convert; entries are case-insensitive without the dot.
+extensions = ["pdf", "docx", "html", "txt", "epub"]
+# Collision strategy when the destination Markdown already exists.
+# Options: "skip" (default), "overwrite", "version".
+collision = "skip"
+
+[logging]
+# Logging level for convert-markdown runs.
+# Choose one of: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+level = "INFO"

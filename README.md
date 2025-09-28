@@ -71,6 +71,14 @@ flags.
     - `study markdown-to-pdf out.pdf notes.md --toc --paper-size a4`
     - `study markdown-to-pdf out.pdf docs/ --level-limit 2 --margin "1in 0.75in"`
     - `study markdown-to-pdf out.pdf README.md --title-page --title "My Guide" --author "Me"`
+- `study convert-markdown PATHS... [options]`
+  - Convert PDFs, DOCX, HTML, TXT, and EPUB files into Markdown outputs with
+    YAML front matter while preserving basenames.
+  - Use `study convert-markdown config init` to scaffold the default
+    `convert_markdown.toml` in the workspace config directory.
+  - Examples:
+    - `study convert-markdown ./docs --extensions pdf docx`
+    - `study convert-markdown config init --workspace ~/.study-utils-data`
 - `study text-combiner OUTPUT INPUTS... [options]`
   - Combine text files with optional section titles and ordering. See `--help`.
 - `study generate-document DOC_TYPE OUTPUT INPUTS... [options]`

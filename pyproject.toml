@@ -48,6 +48,7 @@ study_utils = [
   "documents.toml",
   "resources/*.css",
   "quizzer/view/*.tcss",
+  "convert_markdown/*.toml",
 ]
 
 [tool.uv]
