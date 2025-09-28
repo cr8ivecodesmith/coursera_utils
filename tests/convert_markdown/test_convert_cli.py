@@ -256,9 +256,170 @@ def test_cli_reports_dependency_errors(monkeypatch, capsys):
     assert captured.err.strip() == "install markitdown"
 
 
-def test_build_dependencies_placeholder_raises():
-    with pytest.raises(converter.DependencyError):
+def test_build_dependencies_missing_markitdown(monkeypatch):
+    original_import = cli.importlib.import_module
+
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            raise ImportError("boom")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    with pytest.raises(converter.DependencyError) as exc_info:
         cli._build_dependencies()
+
+    message = str(exc_info.value)
+    assert "markitdown" in message
+    assert "study-utils[convert-markdown]" in message
+
+
+def test_build_dependencies_missing_unstructured(monkeypatch):
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            return SimpleNamespace(
+                MarkItDown=lambda: SimpleNamespace(convert=lambda _: "md")
+            )
+        raise ImportError("unstructured missing")
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    with pytest.raises(converter.DependencyError) as exc_info:
+        cli._build_dependencies()
+
+    message = str(exc_info.value)
+    assert "unstructured" in message
+
+
+def test_build_dependencies_success(monkeypatch):
+    calls: dict[str, list[str]] = {"markitdown": [], "epub": []}
+
+    class FakeMarkItDown:
+        def convert(self, filename: str) -> str:
+            calls["markitdown"].append(filename)
+            return "# converted"
+
+    class FakeElement:
+        def __init__(self, content: str) -> None:
+            self._content = content
+
+        def to_markdown(self) -> str:
+            return self._content
+
+    def fake_partition_epub(*, filename: str):
+        calls["epub"].append(filename)
+        return [FakeElement("epub content")]
+
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            return SimpleNamespace(MarkItDown=lambda: FakeMarkItDown())
+        if name == "unstructured.partition.epub":
+            return SimpleNamespace(partition_epub=fake_partition_epub)
+        raise ImportError(name)
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    deps = cli._build_dependencies()
+
+    md_output = deps.markitdown(Path("sample.pdf"))
+    epub_output = deps.epub(Path("book.epub"))
+
+    assert md_output == "# converted"
+    assert epub_output == "epub content"
+    assert calls["markitdown"] == ["sample.pdf"]
+    assert calls["epub"] == ["book.epub"]
+
+
+def test_build_dependencies_falls_back_to_auto(monkeypatch):
+    class FakeMarkItDown:
+        def convert(self, filename: str) -> str:
+            return f"md::{filename}"
+
+    class FakeElement:
+        def __init__(self, content: str) -> None:
+            self.text = content
+
+    def fake_partition_auto(*, filename: str):
+        return [FakeElement(f"auto::{filename}")]
+
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            return SimpleNamespace(MarkItDown=lambda: FakeMarkItDown())
+        if name == "unstructured.partition.epub":
+            raise ImportError("no epub module")
+        if name == "unstructured.partition.auto":
+            return SimpleNamespace(partition=fake_partition_auto)
+        raise ImportError(name)
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    deps = cli._build_dependencies()
+
+    assert deps.markitdown(Path("file.txt")) == "md::file.txt"
+    assert deps.epub(Path("book.epub")) == "auto::book.epub"
+
+
+def test_build_dependencies_rejects_unknown_markdown(monkeypatch):
+    class FakeMarkItDown:
+        def convert(self, filename: str):  # pragma: no cover - type coverage
+            return object()
+
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            return SimpleNamespace(MarkItDown=lambda: FakeMarkItDown())
+        if name == "unstructured.partition.epub":
+            return SimpleNamespace(partition_epub=lambda **_: [])
+        raise ImportError(name)
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    deps = cli._build_dependencies()
+
+    with pytest.raises(converter.DependencyError) as exc_info:
+        deps.markitdown(Path("sample.pdf"))
+
+    assert "unsupported response" in str(exc_info.value)
+
+
+def test_import_module_requires_attribute(monkeypatch):
+    def fake_import(name, *args, **kwargs):
+        if name == "markitdown":
+            return SimpleNamespace()
+        raise ImportError(name)
+
+    monkeypatch.setattr(cli.importlib, "import_module", fake_import)
+
+    with pytest.raises(converter.DependencyError) as exc_info:
+        cli._import_module("markitdown", "MarkItDown")
+
+    message = str(exc_info.value)
+    assert "MarkItDown" in message
+
+
+def test_coerce_markdown_result_with_markdown_attr():
+    obj = SimpleNamespace(markdown="# heading")
+    assert cli._coerce_markdown_result(obj) == "# heading"
+
+
+def test_coerce_markdown_result_with_dict():
+    payload = {"markdown": "content"}
+    assert cli._coerce_markdown_result(payload) == "content"
+
+
+def test_elements_to_markdown_skips_none_and_trims():
+    class NoMarkdown:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    result = cli._elements_to_markdown(
+        [
+            None,
+            SimpleNamespace(to_markdown=lambda: "  first  "),
+            NoMarkdown("second"),
+        ]
+    )
+
+    assert result == "first\n\nsecond"
 
 
 def test_cli_config_init_writes_template(tmp_path: Path, capsys):

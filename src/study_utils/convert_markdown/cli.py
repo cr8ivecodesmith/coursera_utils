@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from study_utils.core.logging import configure_logger
 from study_utils.core import config_templates
@@ -140,10 +142,107 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _build_dependencies() -> ConverterDependencies:
     """Return the default conversion dependency seams."""
+    markitdown_module = _import_module("markitdown", "MarkItDown")
+    markitdown_factory = getattr(markitdown_module, "MarkItDown")
+    markitdown_engine = markitdown_factory()
 
-    raise DependencyError(
-        "Conversion backends not yet available. "
-        "Install optional dependencies or provide custom seams."
+    def convert_with_markitdown(source: Path) -> str:
+        result = markitdown_engine.convert(str(source))
+        markdown = _coerce_markdown_result(result)
+        if markdown is None:
+            raise DependencyError(
+                "markitdown returned an unsupported response; "
+                "expected Markdown text."
+            )
+        return markdown
+
+    partition_callable = _load_epub_partition()
+
+    def convert_epub(source: Path) -> str:
+        elements = partition_callable(filename=str(source))
+        return _elements_to_markdown(elements)
+
+    return ConverterDependencies(
+        markitdown=convert_with_markitdown,
+        epub=convert_epub,
+    )
+
+
+def _import_module(module: str, required_attribute: str | None = None):
+    try:
+        imported = importlib.import_module(module)
+    except ImportError as exc:
+        message = _missing_dependency_message(module.split(".", 1)[0])
+        raise DependencyError(message) from exc
+
+    if required_attribute is not None and not hasattr(
+        imported, required_attribute
+    ):
+        raise DependencyError(
+            (
+                f"Dependency '{module}' is installed but missing the "
+                f"'{required_attribute}' attribute. Upgrade or reinstall the "
+                "package."
+            )
+        )
+
+    return imported
+
+
+def _load_epub_partition():
+    try:
+        module = _import_module("unstructured.partition.epub", "partition_epub")
+    except DependencyError as first_error:
+        try:
+            module = _import_module("unstructured.partition.auto", "partition")
+        except DependencyError as second_error:
+            raise second_error from first_error
+
+        return getattr(module, "partition")
+
+    return getattr(module, "partition_epub")
+
+
+def _coerce_markdown_result(result: Any) -> str | None:
+    if isinstance(result, str):
+        return result
+
+    markdown_value = getattr(result, "markdown", None)
+    if isinstance(markdown_value, str):
+        return markdown_value
+
+    if isinstance(result, dict):
+        markdown_value = result.get("markdown")
+        if isinstance(markdown_value, str):
+            return markdown_value
+
+    return None
+
+
+def _elements_to_markdown(elements: Iterable[object]) -> str:
+    chunks: list[str] = []
+    for element in elements:
+        if element is None:
+            continue
+
+        if hasattr(element, "to_markdown"):
+            candidate = element.to_markdown()
+        elif hasattr(element, "text"):
+            candidate = element.text
+        else:  # pragma: no cover - defensive
+            candidate = str(element)
+
+        if isinstance(candidate, str) and candidate.strip():
+            chunks.append(candidate.strip())
+
+    return "\n\n".join(chunks)
+
+
+def _missing_dependency_message(package: str) -> str:
+    return (
+        f"Optional dependency '{package}' is required for document conversion. "
+        'Install it with `pip install "study-utils[convert-markdown]"` or '
+        "`pip install markitdown unstructured`."
     )
 
 

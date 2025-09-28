@@ -56,7 +56,7 @@
   - [x] Implement sequential executor and result aggregation, wire CLI summary output, and confirm Ruff + pytest (100% coverage) stay green.
   - [x] Add `config init` command using packaged TOML template, update package data + documentation, and regenerate coverage + Ruff checks.
   - [x] Update user docs/README, finalize integration tests for CLI flows (including `study init`), run full test suite (100% coverage) and Ruff one last time before completion.
-  - [ ] Confirm pytest coverage remains at 100% and Ruff reports no violations (final verification per workflow reminder).
+  - [x] Confirm pytest coverage remains at 100% and Ruff reports no violations (final verification per workflow reminder).
 
 ## Test Plan
 - Unit: converter behavior per format, YAML front matter construction, versioning helper, config parsing/validation, sequential result aggregation (mock markitdown/unstructured).
@@ -130,3 +130,11 @@ Documented workspace defaults and added CLI integration coverage.
 - Updated README with workspace bootstrap guidance, config layering details, and converter dependency notes.
 - Added top-level `study` CLI tests covering `study init` and `study convert-markdown config init` dispatch plus command listings.
 - Ran Ruff (`UV_CACHE_DIR=.uv-cache uv run ruff check`) and pytest (`UV_CACHE_DIR=.uv-cache uv run pytest`), confirming 100% coverage and zero lint violations.
+
+### 2025-03-20 09:10
+**Summary**
+Wired optional converter dependencies and finalized verification pass.
+**Changes**
+- Implemented guarded `_build_dependencies` seam that imports markitdown/unstructured with actionable error messaging and EPUB element formatting helpers.
+- Added CLI tests covering dependency import success/failure paths plus helper utilities; declared `markitdown` project dependency.
+- Ran Ruff (`UV_CACHE_DIR=.uv-cache uv run ruff check`) and pytest (`UV_CACHE_DIR=.uv-cache uv run pytest`) to confirm 100% coverage and clean lint before completion.
