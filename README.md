@@ -86,7 +86,11 @@ uv run study generate-document keywords assignments/lesson-01-keywords.md ~/.stu
 
 **Create a RAG database:**
 
-Create a RAG database from the converted materials:
+Initialize and create a RAG database from the converted materials:
+
+```bash
+uv run study rag config init
+```
 
 ```bash
 uv run study rag ingest --name lesson-01 ~/.study-utils-data/converted
@@ -114,11 +118,11 @@ sources = ["/path/to/home/.study-utils-data/converted"]
 Generate topics and questions:
 
 ```bash
-uv run study quizzer topics generate lesson-01
+uv run study quizzer topics generate lesson-01 --use-ai
 ```
 
 ```bash
-uv run study quizzer questions generate lesson-01 --per-topic 5
+uv run study quizzer questions generate lesson-01 --per-topic 5 --ensure-coverage
 ```
 
 Start a quiz session:
