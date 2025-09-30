@@ -42,7 +42,7 @@
 - Architecture/pattern choices: adopt seam-first approach (per `patterns-and-architecture.md`) by isolating Rich console interactions behind a `QuizSession` controller plus a pure `QuizSessionState` (questions, index, selections) so logic stays testable; inject `Console` and input providers via `run_quiz_session` to keep rendering and command parsing separate.
 - DI & boundaries: follow `engineering-guide.md` guidance by separating pure data helpers (`summarize_results`, `aggregate_summary`) from I/O-bound session controller; expose factories for CLI entry to inject shuffling/limits and fall back to defaults.
 - Stepwise checklist:
-  - [ ] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
+- [x] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
   - [ ] Move or wrap summary helpers in the new module while preserving import surface for downstream callers and ensure they populate the `QuizSessionResult` aggregate fields.
   - [ ] Update CLI (`_main.py`) to call the new session runner and adjust exports in `__init__.py`.
   - [ ] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
@@ -65,6 +65,12 @@
 - Runbooks / revert steps: document in History how to revert by restoring Textual files/dependency if needed.
 
 ## History
+### 2025-09-30 15:22
+**Summary** — Landed Rich session controller slice
+**Changes**
+- Added `quizzer/session.py` with state/result dataclasses, command parser, and Rich rendering helpers
+- Updated `tests/test_quizzer_session.py` to exercise navigation, invalid input, empty bank, and summary flows
+- Verified `pytest --cov --cov-fail-under=100` and `ruff check` both succeed for the new module
 ### 2025-09-30 14:07
 **Summary** — Documented Rich session API and flag propagation decisions
 **Changes**
