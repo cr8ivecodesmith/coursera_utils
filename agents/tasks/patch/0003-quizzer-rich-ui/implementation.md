@@ -45,12 +45,12 @@
   - [x] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
   - [x] Move or wrap summary helpers in the new module while preserving import surface for downstream callers and ensure they populate the `QuizSessionResult` aggregate fields.
   - [x] Update CLI (`_main.py`) to call the new session runner and adjust exports in `__init__.py`.
-  - [ ] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
-  - [ ] Rewrite/replace unit tests to cover Rich session flow, command handling, and summaries with deterministic console captures.
-  - [ ] Prune Textual-specific tests or helper utilities rather than leaving stubs.
+  - [x] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
+  - [x] Rewrite/replace unit tests to cover Rich session flow, command handling, and summaries with deterministic console captures.
+  - [x] Prune Textual-specific tests or helper utilities rather than leaving stubs.
   - [ ] Update docs/help text referencing Textual to describe the Rich-based CLI.
-  - [ ] Run `ruff check` and address any findings.
-  - [ ] Run `pytest --cov` ensuring 100% coverage for touched areas.
+  - [x] Run `ruff check` and address any findings.
+  - [x] Run `pytest --cov` ensuring 100% coverage for touched areas.
   - [ ] Perform manual smoke test of `study quizzer start` capturing instructions in History.
 
 ## Test Plan
@@ -65,6 +65,13 @@
 - Runbooks / revert steps: document in History how to revert by restoring Textual files/dependency if needed.
 
 ## History
+### 2025-09-30 18:12
+**Summary** — Removed Textual UI remnants and tightened Rich session coverage
+**Changes**
+- Deleted the legacy `study_utils.quizzer.view` package and dropped the `textual` dependency/package data.
+- Trimmed Textual-specific tests, extending `tests/test_quizzer_session.py` with summary and aggregation coverage to keep Rich session behaviour exercised.
+- [x] `ruff check`
+- [x] `pytest` (repo defaults with 100% coverage gate)
 ### 2025-09-30 17:05
 **Summary** — Rewired CLI start command to Rich session layer
 **Changes**

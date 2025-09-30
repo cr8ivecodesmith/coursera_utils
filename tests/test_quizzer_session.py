@@ -7,6 +7,8 @@ from study_utils.quizzer.session import (
     QuizSessionState,
     SessionCommand,
     TopicSummary,
+    aggregate_summary,
+    summarize_results,
     _apply_command,
     parse_session_command,
     run_quiz_session,
@@ -221,3 +223,36 @@ def test_apply_command_ignores_select_without_choice() -> None:
     assert result is None
     assert state.selections == {}
     assert console.export_text().strip() == ""
+
+
+def test_summarize_results_handles_missing_and_unanswered() -> None:
+    questions = [
+        {"id": "q1", "stem": "Q1", "answer": "A"},
+        {"id": "q2", "stem": "Q2", "answer": "B"},
+    ]
+    summary = summarize_results(
+        questions,
+        {"q1": "a", "unknown": "C"},
+    )
+
+    summary_map = {item["id"]: item for item in summary}
+    assert summary_map["q1"]["selected"] == "A"
+    assert summary_map["q1"]["correct"] is True
+    assert summary_map["q2"]["selected"] is None
+    assert summary_map["q2"]["correct"] is False
+
+
+def test_aggregate_summary_groups_topics() -> None:
+    aggregate = aggregate_summary(
+        [
+            {"topic_id": "t1", "correct": True},
+            {"topic_id": "t1", "correct": False},
+            {"topic_id": "", "correct": True},
+        ]
+    )
+
+    assert aggregate["total"] == 3
+    assert aggregate["correct"] == 2
+    assert "t1" in aggregate["per_topic"]
+    assert aggregate["per_topic"]["t1"]["asked"] == 2
+    assert aggregate["per_topic"]["t1"]["correct"] == 1

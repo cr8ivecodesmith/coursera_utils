@@ -25,7 +25,6 @@ dependencies = [
   "Jinja2",
   "Pygments",
   "weasyprint",
-  "textual",
   "rich",
 ]
 
@@ -48,7 +47,6 @@ where = ["src"]
 study_utils = [
   "documents.toml",
   "resources/*.css",
-  "quizzer/view/*.tcss",
   "convert_markdown/*.toml",
 ]
 
