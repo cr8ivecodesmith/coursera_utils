@@ -11,12 +11,8 @@ from .manager.quiz import (
     select_questions,
     ai_generate_mcqs_for_topic,
 )
-from .view.quiz import (
-    summarize_results,
-    aggregate_summary,
-    QuizApp,
-    QuestionView,
-)
+from .session import summarize_results, aggregate_summary
+from .view.quiz import QuizApp, QuestionView
 
 __all__ = [
     "build_arg_parser",

@@ -9,7 +9,8 @@ without depending on Textual artifacts.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 
@@ -18,11 +19,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
-
-# NOTE: These helpers live in the legacy Textual view module today. They will
-# be relocated into this module in a follow-up step so callers depend on the
-# Rich session boundary instead of Textual.
-from .view.quiz import aggregate_summary, summarize_results
 
 InputProvider = Callable[[], str]
 ExitAction = Literal["submitted", "quit", "empty"]
@@ -419,6 +415,75 @@ def _build_responses_and_summary(
         },
     )
     return responses, summary
+
+
+def summarize_results(
+    questions: Sequence[Mapping[str, object] | dict[str, object]],
+    selected: Mapping[str, str] | dict[str, str],
+) -> list[dict[str, object]]:
+    """Summarize question results by comparing selections to answers."""
+
+    items: list[dict[str, object]] = []
+    question_map = {str(q.get("id")): q for q in questions}
+
+    for question_id, choice in selected.items():
+        question = question_map.get(str(question_id))
+        if not question:
+            continue
+        answer = str(question.get("answer", "")).strip().upper()
+        selected_key = str(choice).strip().upper()
+        items.append(
+            {
+                "id": str(question_id),
+                "stem": question.get("stem", ""),
+                "selected": selected_key,
+                "answer": answer,
+                "correct": selected_key == answer,
+            }
+        )
+
+    for question in questions:
+        identifier = str(question.get("id"))
+        if identifier in selected:
+            continue
+        items.append(
+            {
+                "id": identifier,
+                "stem": question.get("stem", ""),
+                "selected": None,
+                "answer": str(question.get("answer", "")).strip().upper(),
+                "correct": False,
+            }
+        )
+
+    return items
+
+
+def aggregate_summary(
+    responses: Sequence[Mapping[str, object] | dict[str, object]],
+) -> dict[str, object]:
+    """Aggregate per-question correctness into overall metrics."""
+
+    total = len(responses)
+    correct = sum(1 for response in responses if bool(response.get("correct")))
+    per_topic: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"asked": 0, "correct": 0}
+    )
+
+    for response in responses:
+        topic_key = str(response.get("topic_id", ""))
+        bucket = per_topic[topic_key]
+        bucket["asked"] += 1
+        if response.get("correct"):
+            bucket["correct"] += 1
+
+    accuracy = (correct / total) if total else 0.0
+    return {
+        "total": total,
+        "correct": correct,
+        "accuracy": accuracy,
+        "per_topic": dict(per_topic),
+    }
 
 
 def _render_summary(

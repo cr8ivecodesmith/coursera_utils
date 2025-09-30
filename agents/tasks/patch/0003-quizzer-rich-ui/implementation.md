@@ -42,8 +42,8 @@
 - Architecture/pattern choices: adopt seam-first approach (per `patterns-and-architecture.md`) by isolating Rich console interactions behind a `QuizSession` controller plus a pure `QuizSessionState` (questions, index, selections) so logic stays testable; inject `Console` and input providers via `run_quiz_session` to keep rendering and command parsing separate.
 - DI & boundaries: follow `engineering-guide.md` guidance by separating pure data helpers (`summarize_results`, `aggregate_summary`) from I/O-bound session controller; expose factories for CLI entry to inject shuffling/limits and fall back to defaults.
 - Stepwise checklist:
-- [x] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
-  - [ ] Move or wrap summary helpers in the new module while preserving import surface for downstream callers and ensure they populate the `QuizSessionResult` aggregate fields.
+  - [x] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
+  - [x] Move or wrap summary helpers in the new module while preserving import surface for downstream callers and ensure they populate the `QuizSessionResult` aggregate fields.
   - [ ] Update CLI (`_main.py`) to call the new session runner and adjust exports in `__init__.py`.
   - [ ] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
   - [ ] Rewrite/replace unit tests to cover Rich session flow, command handling, and summaries with deterministic console captures.
@@ -71,6 +71,12 @@
 - Added `quizzer/session.py` with state/result dataclasses, command parser, and Rich rendering helpers
 - Updated `tests/test_quizzer_session.py` to exercise navigation, invalid input, empty bank, and summary flows
 - Verified `pytest --cov --cov-fail-under=100` and `ruff check` both succeed for the new module
+### 2025-09-30 16:08
+**Summary** — Migrated summary helpers into Rich session layer
+**Changes**
+- Moved `aggregate_summary`/`summarize_results` into `quizzer/session.py` and adjusted view module to re-export them without Rich/Textual coupling
+- Updated package exports so `study_utils.quizzer` sources helpers from the new session module
+- Ran `ruff check` and `pytest` (with repo defaults) to confirm 100% coverage and lint cleanliness
 ### 2025-09-30 14:07
 **Summary** — Documented Rich session API and flag propagation decisions
 **Changes**

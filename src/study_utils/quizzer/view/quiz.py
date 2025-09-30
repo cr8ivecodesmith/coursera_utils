@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Dict, List, Optional, Sequence
 
 from textual.app import App, ComposeResult
@@ -6,69 +5,10 @@ from textual.widget import Widget
 from textual.widgets import Static, Button
 from textual.containers import Vertical, Container
 
+from .. import session as _session
 
-def aggregate_summary(
-    responses: Sequence[Dict[str, object]],
-) -> Dict[str, object]:
-    total = len(responses)
-    correct = sum(1 for r in responses if bool(r.get("correct")))
-    per_topic: Dict[str, Dict[str, int]] = defaultdict(
-        lambda: {"asked": 0, "correct": 0}
-    )
-    for r in responses:
-        t = str(r.get("topic_id", ""))
-        per_topic[t]["asked"] += 1
-        if r.get("correct"):
-            per_topic[t]["correct"] += 1
-    accuracy = (correct / total) if total else 0.0
-    return {
-        "total": total,
-        "correct": correct,
-        "accuracy": accuracy,
-        "per_topic": dict(per_topic),
-    }
-
-
-def summarize_results(
-    questions: Sequence[Dict[str, object]], selected: Dict[str, str]
-) -> List[Dict[str, object]]:
-    """Summarize results comparing selected answers to correct answers.
-
-    Returns a list with one entry per question with fields:
-    id, stem, selected, answer, correct (bool)
-    """
-    items: List[Dict[str, object]] = []
-    qmap = {str(q.get("id")): q for q in questions}
-    # Add answered first
-    for qid, choice in selected.items():
-        q = qmap.get(str(qid))
-        if not q:
-            continue
-        ans = str(q.get("answer", "")).strip().upper()
-        items.append(
-            {
-                "id": str(qid),
-                "stem": q.get("stem", ""),
-                "selected": str(choice).strip().upper(),
-                "answer": ans,
-                "correct": str(choice).strip().upper() == ans,
-            }
-        )
-    # Then unanswered
-    for q in questions:
-        qid = str(q.get("id"))
-        if qid in selected:
-            continue
-        items.append(
-            {
-                "id": qid,
-                "stem": q.get("stem", ""),
-                "selected": None,
-                "answer": str(q.get("answer", "")).strip().upper(),
-                "correct": False,
-            }
-        )
-    return items
+aggregate_summary = _session.aggregate_summary
+summarize_results = _session.summarize_results
 
 
 class QuizApp(App):
