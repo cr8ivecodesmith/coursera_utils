@@ -3,6 +3,8 @@ import random
 from pathlib import Path
 from typing import Optional, Sequence
 
+from rich.console import Console
+
 from ..core import load_client
 from .utils import (
     _find_config,
@@ -15,7 +17,7 @@ from .utils import (
 )
 
 from .manager.quiz import generate_questions, extract_topics
-from .view.quiz import QuizApp
+from .session import run_quiz_session
 
 
 def _out_dir_for(name: str, cfg: Optional[dict]) -> Path:
@@ -209,12 +211,7 @@ def _cmd_questions_list(args: argparse.Namespace) -> int:
 
 
 def _cmd_start(args: argparse.Namespace) -> int:
-    """Start a simple quiz session using Textual UI.
-
-    Load questions from `.quizzer/<name>/questions.jsonl`, optionally shuffle
-    and limit to `--num`. For this initial pass, display questions without
-    recording responses.
-    """
+    """Start a Rich-powered quiz session in the current terminal."""
     cfg_path = _find_config(getattr(args, "config", None))
     if not cfg_path:
         print("Error: quizzer.toml not found.")
@@ -240,8 +237,24 @@ def _cmd_start(args: argparse.Namespace) -> int:
     n = int(getattr(args, "num", 0) or 0)
     if n > 0:
         questions = questions[:n]
-    app = QuizApp(questions)
-    app.run()
+
+    mix_mode = getattr(args, "mix", "")
+    if mix_mode and mix_mode != "balanced":
+        print("Warning: --mix is not implemented yet; ignoring selection.")
+
+    if getattr(args, "resume", False):
+        print(
+            "Warning: --resume is not implemented yet; "
+            "starting a fresh session."
+        )
+
+    console = Console()
+    run_quiz_session(
+        questions,
+        console=console,
+        input_provider=input,
+        show_explanations=bool(getattr(args, "explain", True)),
+    )
     return 0
 
 

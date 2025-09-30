@@ -44,7 +44,7 @@
 - Stepwise checklist:
   - [x] Introduce `quizzer/session.py` with `QuizSessionState` (pure data/state), `QuizSessionResult` (return payload), and a `QuizSession` controller that cooperates with Rich rendering helpers exposed via `run_quiz_session`.
   - [x] Move or wrap summary helpers in the new module while preserving import surface for downstream callers and ensure they populate the `QuizSessionResult` aggregate fields.
-  - [ ] Update CLI (`_main.py`) to call the new session runner and adjust exports in `__init__.py`.
+  - [x] Update CLI (`_main.py`) to call the new session runner and adjust exports in `__init__.py`.
   - [ ] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
   - [ ] Rewrite/replace unit tests to cover Rich session flow, command handling, and summaries with deterministic console captures.
   - [ ] Prune Textual-specific tests or helper utilities rather than leaving stubs.
@@ -65,6 +65,13 @@
 - Runbooks / revert steps: document in History how to revert by restoring Textual files/dependency if needed.
 
 ## History
+### 2025-09-30 17:05
+**Summary** — Rewired CLI start command to Rich session layer
+**Changes**
+- Replaced the Textual `QuizApp` launch with `run_quiz_session`, threading shuffle/limit/explain flags and emitting placeholder warnings for `--mix`/`--resume`.
+- Updated CLI tests to stub the Rich session runner, assert flag propagation, and verify warning messages; refreshed package exports to surface the new APIs.
+- [x] `ruff check`
+- [x] `pytest` (repo defaults with 100% coverage gate)
 ### 2025-09-30 15:22
 **Summary** — Landed Rich session controller slice
 **Changes**

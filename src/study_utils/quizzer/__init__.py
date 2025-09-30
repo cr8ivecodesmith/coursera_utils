@@ -11,7 +11,14 @@ from .manager.quiz import (
     select_questions,
     ai_generate_mcqs_for_topic,
 )
-from .session import summarize_results, aggregate_summary
+from .session import (
+    aggregate_summary,
+    summarize_results,
+    run_quiz_session,
+    QuizSessionResult,
+    QuizSummary,
+    QuizSessionState,
+)
 from .view.quiz import QuizApp, QuestionView
 
 __all__ = [
@@ -26,6 +33,10 @@ __all__ = [
     "ai_generate_mcqs_for_topic",
     "summarize_results",
     "aggregate_summary",
+    "run_quiz_session",
+    "QuizSessionResult",
+    "QuizSummary",
+    "QuizSessionState",
     "QuizApp",
     "QuestionView",
 ]

@@ -376,7 +376,15 @@ def test_cmd_start(
     monkeypatch.chdir(tmp_path)
     cfg_path = tmp_path / "quizzer.toml"
     cfg_path.write_text("[quiz.demo]\n", encoding="utf-8")
-    args = Namespace(name="demo", config=None, shuffle=True, num=1)
+    args = Namespace(
+        name="demo",
+        config=None,
+        shuffle=True,
+        num=1,
+        mix="balanced",
+        resume=False,
+        explain=True,
+    )
 
     monkeypatch.setattr(q_cli, "_find_config", lambda *_: None)
     assert q_cli._cmd_start(args) == 2
@@ -399,18 +407,43 @@ def test_cmd_start(
         encoding="utf-8",
     )
 
-    recorded = {}
+    invocations = []
 
-    class StubQuizApp:
-        def __init__(self, questions):
-            recorded["questions"] = questions
+    def fake_session(questions, console, input_provider, show_explanations):
+        invocations.append(
+            {
+                "questions": list(questions),
+                "console": console,
+                "input_provider": input_provider,
+                "show_explanations": show_explanations,
+            }
+        )
+        return SimpleNamespace(exit_action="submitted")
 
-        def run(self):
-            recorded["ran"] = True
-
-    monkeypatch.setattr(q_cli, "QuizApp", StubQuizApp)
+    monkeypatch.setattr(q_cli, "run_quiz_session", fake_session)
     assert q_cli._cmd_start(args) == 0
-    assert recorded["ran"] and len(recorded["questions"]) == 1
+    assert len(invocations) == 1
+    assert len(invocations[0]["questions"]) == 1
+    assert invocations[0]["input_provider"] is builtins.input
+    assert invocations[0]["show_explanations"] is True
+    capsys.readouterr()
+
+    args_warn = Namespace(
+        name="demo",
+        config=None,
+        shuffle=False,
+        num=0,
+        mix="random",
+        resume=True,
+        explain=False,
+    )
+
+    assert q_cli._cmd_start(args_warn) == 0
+    output = capsys.readouterr().out
+    assert "--mix is not implemented" in output
+    assert "--resume is not implemented" in output
+    assert len(invocations) == 2
+    assert invocations[1]["show_explanations"] is False
 
 
 def test_main_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
