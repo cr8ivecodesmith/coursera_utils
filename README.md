@@ -113,7 +113,7 @@ flags.
     bundled defaults under `study_utils/documents.toml`.
   - Example: `study generate-document reading_assignment notes.md ./materials --extensions txt md --level-limit 0`
 - `study quizzer [options]`
-  - Launch the interactive quizzer TUI for drilling on generated questions.
+  - Launch the interactive Rich-based quiz session for drilling on generated questions.
 - `study rag <subcommand> [options]`
   - Manage retrieval-augmented study databases and chat sessions.
     Includes `config`, `ingest`, `list`, `inspect`, `export`, `import`,

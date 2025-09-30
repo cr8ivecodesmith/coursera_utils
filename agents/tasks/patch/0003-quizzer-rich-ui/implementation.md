@@ -48,10 +48,10 @@
   - [x] Remove Textual files, dependency, and any compatibility wrappers from the codebase (`view/__init__.py`, `view/quiz.py`, `view/quiz.tcss`, `pyproject.toml`).
   - [x] Rewrite/replace unit tests to cover Rich session flow, command handling, and summaries with deterministic console captures.
   - [x] Prune Textual-specific tests or helper utilities rather than leaving stubs.
-  - [ ] Update docs/help text referencing Textual to describe the Rich-based CLI.
+  - [x] Update docs/help text referencing Textual to describe the Rich-based CLI.
   - [x] Run `ruff check` and address any findings.
   - [x] Run `pytest --cov` ensuring 100% coverage for touched areas.
-  - [ ] Perform manual smoke test of `study quizzer start` capturing instructions in History.
+  - [x] Perform manual smoke test of `study quizzer start` capturing instructions in History.
 
 ## Test Plan
 - Unit: cover command parsing (valid/invalid inputs, navigation, submit/quit), summary table generation, empty question bank handling, CLI wiring with monkeypatched Console/input (including propagation of shuffle/limit/explain flags), assert that removing Textual exports surfaces clear `AttributeError` for deprecated symbols, and verify the returned `QuizSessionResult` mirrors the printed summary data.
@@ -99,3 +99,11 @@
 **Summary**
 **Changes**
 - Drafted implementation plan outlining Rich session approach, impacts, tests, and verification checklist
+### 2025-09-30 19:15
+**Summary** — Refreshed Rich session docs and recorded manual smoke test
+**Changes**
+- Updated README and CLI command summary to describe the Rich-based quiz session
+- Ran manual smoke test (`UV_CACHE_DIR=.uv-cache uv run study quizzer start demo --num 1 --no-explain`) with scripted answers, confirming Rich prompts and summary output
+- [x] `ruff check`
+- [x] `pytest` (repo defaults with 100% coverage gate)
+

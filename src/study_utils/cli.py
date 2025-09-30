@@ -95,7 +95,7 @@ _COMMAND_SPECS: Sequence[CommandSpec] = (
     ),
     CommandSpec(
         name="quizzer",
-        summary="Launch the interactive quizzer TUI.",
+        summary="Launch the interactive Rich quiz session.",
         is_tui=True,
         handler=lambda argv: _run_module_command(
             "study_utils.quizzer._main",
