@@ -66,6 +66,8 @@ uv run study init
 
 **Convert documents to Markdown:**
 
+Create a `materials/` directory and drop your source documents there:
+
 ```bash
 mkdir -p materials
 ```
@@ -74,7 +76,13 @@ mkdir -p materials
 uv run study convert-markdown materials
 ```
 
+The converted Markdown files will land in
+`~/.study-utils-data/converted` by default.
+
+
 **Reshape documents to study formats:**
+
+Create a reading assignment and a keywords list from a converted Markdown file:
 
 ```bash
 uv run study generate-document reading_assignment assignments/lesson-01.md ~/.study-utils-data/converted
@@ -110,7 +118,7 @@ Initialize and edit `quizzer.toml` and set:
 uv run study quizzer init lesson-01
 ```
 
-```txt
+```toml
 [quiz.lesson-01]
 sources = ["/path/to/home/.study-utils-data/converted"]
 ```
