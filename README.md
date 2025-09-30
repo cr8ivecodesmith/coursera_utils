@@ -21,10 +21,14 @@ CLI first tooling for:
 
 - Python 3.12+
 - `OPENAI_API_KEY` environment variable for AI-powered features (supports `.env`)
+
+Optional but recommended:
+
 - System libraries for WeasyPrint (for Markdown → PDF conversion)
 - `ffmpeg` for video transcription (pydub dependency)
-- Optional: `uv` for dependency and virtual environment management
-- Optional: A markdown document viewer/editor of your choice
+- `pandoc` for epub → markdown conversion (if you want epub support)
+- `uv` for dependency and virtual environment management
+- A markdown document viewer/editor of your choice
 
 This currently tested on Ubuntu 22.04/24.04 (WSL) and Termux on Android.
 
@@ -63,30 +67,63 @@ uv run study init
 **Convert documents to Markdown:**
 
 ```bash
-mkdir -p materials converted
-uv run study convert-markdown ./materials --output-dir ./converted --extensions pdf docx html epub
+mkdir -p materials
+```
+
+```bash
+uv run study convert-markdown materials
 ```
 
 **Reshape documents to study formats:**
 
 ```bash
-uv run study generate-document reading_assignment assignments/lesson-01.md ./converted --extensions md
+uv run study generate-document reading_assignment assignments/lesson-01.md ~/.study-utils-data/converted
+```
+
+```bash
+uv run study generate-document keywords assignments/lesson-01-keywords.md ~/.study-utils-data/converted
 ```
 
 **Create a RAG database:**
 
+Create a RAG database from the converted materials:
+
 ```bash
-uv run study rag ingest --name lesson-01 ./converted
-uv run study rag list
+uv run study rag ingest --name lesson-01 ~/.study-utils-data/converted
+```
+
+Explore the study materials:
+
+```bash
+uv run study rag chat --db lesson-01
 ```
 
 **Take quizzes:**
 
+Initialize and edit `quizzer.toml` and set:
+
 ```bash
 uv run study quizzer init lesson-01
-# Edit quizzer.toml and set [quiz.lesson-01].sources = ["./converted"]
-uv run study quizzer topics generate lesson-01 --extensions md
-uv run study quizzer questions generate lesson-01 --per-topic 3
+```
+
+```txt
+[quiz.lesson-01]
+sources = ["/path/to/home/.study-utils-data/converted"]
+```
+
+Generate topics and questions:
+
+```bash
+uv run study quizzer topics generate lesson-01
+```
+
+```bash
+uv run study quizzer questions generate lesson-01 --per-topic 5
+```
+
+Start a quiz session:
+
+```bash
 uv run study quizzer start lesson-01 --num 5
 ```
 
