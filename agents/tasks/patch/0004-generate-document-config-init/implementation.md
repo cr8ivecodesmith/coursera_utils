@@ -40,7 +40,7 @@
   - [x] Introduce the `study_utils.generate_document` package structure, migrating core helpers into `config.py` and `runner.py` while keeping pure functions intact.
   - [x] Wire `cli.py` to provide both the document generation command and a nested `config init` subcommand mirroring convert-markdown options, keeping existing flags intact.
   - [x] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
-  - [ ] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
+  - [x] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
   - [ ] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
   - [ ] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
   - [ ] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
@@ -79,3 +79,9 @@
 **Changes**
 - Added `study_utils.generate_document` entry to `core.config_templates` so config scaffolding uses the shared helper.
 - Kept existing `documents.toml` content as the packaged template; no tests run yet (full suite pending later checklist steps).
+
+### 2025-10-02 17:05
+**Summary** — Locked generate-document package exports to legacy surface
+**Changes**
+- Trimmed `study_utils.generate_document.__all__` to the historically supported API (`generate_document`, `find_config_path`, `load_documents_config`, `build_reference_block`, `build_messages`, `build_arg_parser`, `main`).
+- Ensured downstream imports via `import study_utils.generate_document as gd` remain stable ahead of removing the legacy shim.
