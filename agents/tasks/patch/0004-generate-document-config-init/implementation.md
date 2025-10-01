@@ -44,9 +44,9 @@
   - [x] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
   - [x] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
   - [x] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
-  - [ ] Update packaging metadata so the new template ships with the wheel and eliminate the old `documents.toml` entry.
-  - [ ] Run `uv run pytest` (or equivalent) to maintain 100% coverage once refactor is complete.
-  - [ ] Run `uv run ruff check` to ensure lint parity after module moves.
+  - [x] Update packaging metadata so the new template ships with the wheel and eliminate the old `documents.toml` entry.
+  - [x] Run `uv run pytest` (or equivalent) to maintain 100% coverage once refactor is complete.
+  - [x] Run `uv run ruff check` to ensure lint parity after module moves.
 
 ## Test Plan
 - Unit: cover config resolver precedence (workspace > cwd > bundled), template writer behavior (`--force` and existing files), runner validation errors for missing doc types or empty completions, and pure helpers like message building after the move.
@@ -104,3 +104,21 @@
 - Added workspace-first resolver unit tests and config-init CLI coverage (success paths, overwrite protection, relative destinations, workspace errors).
 - Updated CLI dispatch test expectations to assert workspace precedence and refactored helpers for writing temporary configs.
 - Ran `uv run pytest tests/test_generate_document.py::test_find_config_path_prefers_workspace_over_cwd`; test passes but run fails overall because the global 100% coverage gate is deferred to the final checklist step.
+
+### 2025-10-02 22:05
+**Summary** — Updated packaging metadata for generate-document template
+**Changes**
+- Adjusted `pyproject.toml` package data to ship `generate_document/documents.toml` and drop the obsolete root-level entry.
+- Deferred test runs until the final coverage and lint checklist steps.
+
+### 2025-10-02 22:40
+**Summary** — Achieved full-suite pytest coverage for generate-document refactor
+**Changes**
+- Added regression tests to cover workspace discovery failures and the config CLI’s unsupported subcommand/template-error branches.
+- Ran `uv run pytest`; all 515 tests passed with repo-wide coverage restored to 100%.
+
+### 2025-10-02 22:48
+**Summary** — Final Ruff pass after config helper reflow
+**Changes**
+- Reflowed `find_config_path` signature/docstring to satisfy Ruff’s line-length rule.
+- Ran `uv run ruff check`; lint passes with no diagnostics.

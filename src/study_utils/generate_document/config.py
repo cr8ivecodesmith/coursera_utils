@@ -24,8 +24,12 @@ class GenerateOptions:
     doc_type: str
 
 
-def find_config_path(arg: Optional[str], *, workspace_path: Optional[Path] = None) -> Path:
-    """Locate the documents config respecting CLI overrides and the workspace."""
+def find_config_path(
+    arg: Optional[str],
+    *,
+    workspace_path: Optional[Path] = None,
+) -> Path:
+    """Locate the documents config respecting CLI overrides and workspace."""
 
     if arg:
         path = Path(arg).expanduser().resolve()

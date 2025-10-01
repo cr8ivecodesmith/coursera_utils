@@ -52,6 +52,26 @@ def test_find_config_path_prefers_workspace_over_cwd(
     assert result == workspace_cfg.resolve()
 
 
+def test_find_config_path_wraps_workspace_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    def fail_workspace(*_args, **_kwargs):
+        raise workspace_mod.WorkspaceError("no workspace")
+
+    monkeypatch.setattr(
+        workspace_mod,
+        "ensure_workspace",
+        fail_workspace,
+    )
+
+    with pytest.raises(FileNotFoundError) as exc:
+        gd.find_config_path(None)
+
+    assert "no workspace" in str(exc.value)
+
+
 def test_find_config_path_uses_cwd_when_workspace_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -113,6 +133,7 @@ def test_find_config_path_prefers_cwd(
     cfg.write_text("[doc]\nprompt='Use me'\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     assert gd.find_config_path(None) == cfg.resolve()
+
 
 def test_find_config_path_raises_when_no_candidates(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

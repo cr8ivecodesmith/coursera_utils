@@ -46,7 +46,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 study_utils = [
-  "documents.toml",
+  "generate_document/documents.toml",
   "resources/*.css",
   "convert_markdown/*.toml",
 ]

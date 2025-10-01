@@ -7,6 +7,7 @@ import pytest
 from study_utils import cli
 from study_utils.core import config_templates
 from study_utils.core import workspace as workspace_mod
+from study_utils.core.config_templates import ConfigTemplateError
 from study_utils.generate_document import config as gd_config
 import study_utils.generate_document.cli as generate_document_cli
 
@@ -350,6 +351,60 @@ def test_generate_document_cli_config_init_workspace_error(
     assert code == 1
     captured = capsys.readouterr()
     assert "workspace boom" in captured.err
+
+
+def test_generate_document_cli_config_unknown_subcommand(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    class DummyParser:
+        def __init__(self) -> None:
+            self.errors: list[str] = []
+
+        def parse_args(self, argv):
+            assert argv == ["bogus"]
+            return types.SimpleNamespace(command="bogus")
+
+        def error(self, message: str) -> None:
+            self.errors.append(message)
+            sys.stderr.write(message + "\n")
+            raise SystemExit(2)
+
+    dummy = DummyParser()
+    monkeypatch.setattr(
+        generate_document_cli,
+        "_build_config_parser",
+        lambda: dummy,
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        generate_document_cli.main(["config", "bogus"])
+
+    assert exc.value.code == 2
+    assert dummy.errors == ["Unsupported config command 'bogus'."]
+    captured = capsys.readouterr()
+    assert "unsupported config command" in captured.err.lower()
+
+
+def test_generate_document_cli_config_init_template_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail_template(name: str):
+        assert name == "generate_document"
+        raise ConfigTemplateError("template missing")
+
+    monkeypatch.setattr(
+        generate_document_cli.config_templates,
+        "get_template",
+        fail_template,
+    )
+
+    code = cli.main(["generate-document", "config", "init"])
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "template missing" in captured.err
 
 
 def test_cli_generate_document_invokes_subcommand_defaults(
