@@ -5,10 +5,10 @@ Extend the AI-powered document generator so it mirrors the convert-markdown work
 
 ## Goals
 - Introduce a `study generate-document config` command group with an `init` subcommand that writes `documents.toml` to either an explicit `--path` or the workspace config directory, with `--workspace` and `--force` flags matching convert-markdown.
-- Promote `src/study_utils/generate_document.py` into a `study_utils.generate_document` package (e.g., `cli.py`, `config.py`, `runner.py`) and delete the legacy module shim instead of preserving backward-compatible imports/tests.
+- Promote `src/study_utils/generate_document.py` into a `study_utils.generate_document` package (e.g., `cli.py`, `config.py`, `runner.py`) and delete the legacy module shim while re-exporting the public surface from `generate_document/__init__.py` so existing CLI imports keep working without duplicate tests.
 - Remove obsolete CLI aliases, fixtures, and tests that only exercised the legacy entry point so the codebase stays lean.
 - Register a packaged `template.toml` for generate-document with `study_utils.core.config_templates` so both `study init` and the new config command can scaffold it.
-- Update config discovery so the CLI defaults to the workspace config file before falling back to CWD or bundled templates, and emit an actionable error pointing to `config init` when nothing is found.
+- Update config discovery so the CLI defaults to the workspace config file before falling back to CWD or bundled templates, emitting an actionable error pointing to `config init`, and ensure all existing flags (`--config`, `--force`, etc.) are preserved during the refactor.
 - Refresh README/quickstart snippets and pytest coverage to reflect the new command flow, including CLI tests that cover success, overwrite protection, and workspace resolution.
 
 ## Non-Goals
@@ -26,7 +26,7 @@ Extend the AI-powered document generator so it mirrors the convert-markdown work
 
 ## Constraints & Dependencies
 - Constraints: maintain ASCII templates and docs; keep the CLI and helper modules pure/testable; continue targeting Python 3.11+ for `tomllib` while preserving the `tomli` fallback for older environments in tests.
-- Dependencies: reuse `study_utils.core.workspace.ensure_workspace`, `study_utils.core.config_templates`, and existing OpenAI + file helpers; update `pyproject.toml` (and package data) so the new template ships with the wheel; mirror convert-markdown’s CLI ergonomics for consistency; ensure `study init` installs the new template via the shared template registry.
+- Dependencies: reuse `study_utils.core.workspace.ensure_workspace`, `study_utils.core.config_templates`, and existing OpenAI + file helpers; update `pyproject.toml` (and package data) so the new template ships with the wheel; mirror convert-markdown’s CLI ergonomics for consistency—invoking the same helper flow for template installation so `config init` and `study init` stay in sync; ensure `study init` installs the new template via the shared template registry.
 - Upstream/Downstream: update `study_utils.cli` command wiring, pytest fixtures that import `study_utils.generate_document`, and any tooling that assumed the template lived beside `generate_document.py`.
 
 ## Security & Privacy
