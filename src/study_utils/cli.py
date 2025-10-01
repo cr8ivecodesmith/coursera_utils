@@ -77,7 +77,7 @@ _COMMAND_SPECS: Sequence[CommandSpec] = (
         name="generate-document",
         summary="Generate AI-assisted study documents from references.",
         handler=lambda argv: _run_module_command(
-            "study_utils.generate_document",
+            "study_utils.generate_document.cli",
             "main",
             "study generate-document",
             argv,

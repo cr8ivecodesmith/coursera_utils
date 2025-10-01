@@ -41,7 +41,7 @@
   - [x] Wire `cli.py` to provide both the document generation command and a nested `config init` subcommand mirroring convert-markdown options, keeping existing flags intact.
   - [x] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
   - [x] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
-  - [ ] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
+  - [x] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
   - [ ] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
   - [ ] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
   - [ ] Update packaging metadata so the new template ships with the wheel and eliminate the old `documents.toml` entry.
@@ -85,3 +85,9 @@
 **Changes**
 - Trimmed `study_utils.generate_document.__all__` to the historically supported API (`generate_document`, `find_config_path`, `load_documents_config`, `build_reference_block`, `build_messages`, `build_arg_parser`, `main`).
 - Ensured downstream imports via `import study_utils.generate_document as gd` remain stable ahead of removing the legacy shim.
+
+### 2025-10-02 18:20
+**Summary** — Rewired top-level CLI to the generate-document package
+**Changes**
+- Pointed `study_utils.cli` at `study_utils.generate_document.cli` so the new config subcommand is reachable from `study generate-document`.
+- Ran the targeted CLI regression test; it passed but the repository-wide coverage gate still fails pending broader test updates.
