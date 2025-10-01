@@ -64,6 +64,14 @@ class ConfigTemplate:
 
 
 _TEMPLATES: dict[str, ConfigTemplate] = {
+    "generate_document": ConfigTemplate(
+        name="generate_document",
+        filename="documents.toml",
+        description=(
+            "Configuration defaults for the generate-document workflow."
+        ),
+        package="study_utils.generate_document",
+    ),
     "convert_markdown": ConfigTemplate(
         name="convert_markdown",
         filename="template.toml",

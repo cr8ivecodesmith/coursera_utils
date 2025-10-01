@@ -39,7 +39,7 @@
 - Stepwise checklist:
   - [x] Introduce the `study_utils.generate_document` package structure, migrating core helpers into `config.py` and `runner.py` while keeping pure functions intact.
   - [x] Wire `cli.py` to provide both the document generation command and a nested `config init` subcommand mirroring convert-markdown options, keeping existing flags intact.
-  - [ ] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
+  - [x] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
   - [ ] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
   - [ ] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
   - [ ] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
@@ -73,3 +73,9 @@
 **Changes**
 - Extended `generate_document.cli.main` to route `study generate-document config init` with `--path`, `--workspace`, and `--force` support mirroring convert-markdown.
 - Plumbed `config_templates`/workspace helpers and introduced `CONFIG_FILENAME` constant for shared defaults pending template registration.
+
+### 2025-10-02 15:45
+**Summary** — Registered generate-document template with shared registry
+**Changes**
+- Added `study_utils.generate_document` entry to `core.config_templates` so config scaffolding uses the shared helper.
+- Kept existing `documents.toml` content as the packaged template; no tests run yet (full suite pending later checklist steps).
