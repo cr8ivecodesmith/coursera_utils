@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Optional
 
 
+CONFIG_FILENAME = "documents.toml"
+
+
 @dataclass(frozen=True)
 class GenerateOptions:
     """CLI-facing options derived from argument parsing."""
@@ -25,10 +28,10 @@ def find_config_path(arg: Optional[str]) -> Path:
         if not path.exists():
             raise FileNotFoundError(f"Config not found: {path}")
         return path
-    cwd_cfg = Path.cwd() / "documents.toml"
+    cwd_cfg = Path.cwd() / CONFIG_FILENAME
     if cwd_cfg.exists():
         return cwd_cfg.resolve()
-    bundled = Path(__file__).resolve().parent / "documents.toml"
+    bundled = Path(__file__).resolve().parent / CONFIG_FILENAME
     if bundled.exists():
         return bundled
     raise FileNotFoundError(
