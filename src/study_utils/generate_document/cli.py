@@ -60,8 +60,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config",
         help=(
-            "Path to documents.toml. Defaults to ./documents.toml then "
-            "bundled study_utils/documents.toml"
+            "Path to documents.toml. Defaults to the workspace config "
+            "before falling back to ./documents.toml"
         ),
     )
     return parser

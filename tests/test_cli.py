@@ -6,6 +6,9 @@ import pytest
 
 from study_utils import cli
 from study_utils.core import config_templates
+from study_utils.core import workspace as workspace_mod
+from study_utils.generate_document import config as gd_config
+import study_utils.generate_document.cli as generate_document_cli
 
 
 @pytest.fixture(autouse=True)
@@ -237,18 +240,148 @@ def test_study_cli_runs_convert_markdown_config_init(tmp_path, capsys):
     assert str(destination.resolve()) in captured.out
 
 
+def test_generate_document_cli_config_init_writes_template(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    template = config_templates.get_template("generate_document")
+    code = cli.main(
+        [
+            "generate-document",
+            "config",
+            "init",
+            "--workspace",
+            str(tmp_path),
+        ]
+    )
+
+    assert code == 0
+    target = tmp_path / "config" / gd_config.CONFIG_FILENAME
+    assert target.exists()
+    assert target.read_text(encoding="utf-8") == template.read_text()
+
+    captured = capsys.readouterr()
+    assert str(target) in captured.out
+    assert captured.err == ""
+
+
+def test_generate_document_cli_config_init_requires_force(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    template = config_templates.get_template("generate_document")
+    custom = tmp_path / "custom.toml"
+    custom.write_text("existing", encoding="utf-8")
+
+    code = cli.main(
+        [
+            "generate-document",
+            "config",
+            "init",
+            "--path",
+            str(custom),
+        ]
+    )
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "Config already exists" in captured.err
+    assert custom.read_text(encoding="utf-8") == "existing"
+
+    code = cli.main(
+        [
+            "generate-document",
+            "config",
+            "init",
+            "--path",
+            str(custom),
+            "--force",
+        ]
+    )
+
+    assert code == 0
+    assert custom.read_text(encoding="utf-8") == template.read_text()
+    captured = capsys.readouterr()
+    assert str(custom) in captured.out
+
+
+def test_generate_document_cli_config_init_relative_path(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    code = cli.main(
+        [
+            "generate-document",
+            "config",
+            "init",
+            "--path",
+            "local.toml",
+        ]
+    )
+
+    assert code == 0
+    target = tmp_path / "local.toml"
+    assert target.exists()
+    captured = capsys.readouterr()
+    assert str(target.resolve()) in captured.out
+
+
+def test_generate_document_cli_config_init_workspace_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail_workspace(*_args, **_kwargs):
+        raise workspace_mod.WorkspaceError("workspace boom")
+
+    monkeypatch.setattr(
+        generate_document_cli.workspace_mod,
+        "ensure_workspace",
+        fail_workspace,
+    )
+
+    code = cli.main(
+        [
+            "generate-document",
+            "config",
+            "init",
+        ]
+    )
+
+    assert code == 1
+    captured = capsys.readouterr()
+    assert "workspace boom" in captured.err
+
+
 def test_cli_generate_document_invokes_subcommand_defaults(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    config = tmp_path / "documents.toml"
-    config.write_text("[keywords]\nprompt='Use me'\n", encoding="utf-8")
-    src_dir = tmp_path / "refs"
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setenv(
+        workspace_mod.WORKSPACE_ENV,
+        str(workspace_root),
+    )
+    layout = workspace_mod.ensure_workspace(path=workspace_root)
+    workspace_cfg = layout.path_for("config") / gd_config.CONFIG_FILENAME
+    workspace_cfg.write_text(
+        "[keywords]\nprompt='Workspace'\n",
+        encoding="utf-8",
+    )
+
+    project = tmp_path / "project"
+    project.mkdir()
+    local_cfg = project / gd_config.CONFIG_FILENAME
+    local_cfg.write_text(
+        "[keywords]\nprompt='Local'\n",
+        encoding="utf-8",
+    )
+
+    src_dir = project / "refs"
     src_dir.mkdir()
     ref = src_dir / "note.txt"
     ref.write_text("Reference", encoding="utf-8")
-    out_path = tmp_path / "out.md"
+    out_path = project / "out.md"
 
     captured: dict[str, object] = {}
 
@@ -260,7 +393,7 @@ def test_cli_generate_document_invokes_subcommand_defaults(
         "study_utils.generate_document.cli.generate_document",
         fake_generate_document,
     )
-    monkeypatch.chdir(tmp_path)
+    monkeypatch.chdir(project)
 
     code = cli.main(
         [
@@ -277,7 +410,7 @@ def test_cli_generate_document_invokes_subcommand_defaults(
     assert captured["extensions"] == {"txt", "md", "markdown"}
     assert captured["inputs"] == [src_dir.resolve()]
     assert captured["output_path"] == out_path.resolve()
-    assert captured["config_path"] == config.resolve()
+    assert captured["config_path"] == workspace_cfg.resolve()
 
 
 def test_cli_text_combiner_invokes_subcommand_defaults(

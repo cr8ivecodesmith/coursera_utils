@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
+from study_utils.core import workspace as workspace_mod
+from study_utils.core.workspace import WorkspaceError
+
 
 CONFIG_FILENAME = "documents.toml"
 
@@ -21,21 +24,33 @@ class GenerateOptions:
     doc_type: str
 
 
-def find_config_path(arg: Optional[str]) -> Path:
-    """Return the path to the documents config (toml)."""
+def find_config_path(arg: Optional[str], *, workspace_path: Optional[Path] = None) -> Path:
+    """Locate the documents config respecting CLI overrides and the workspace."""
+
     if arg:
         path = Path(arg).expanduser().resolve()
         if not path.exists():
             raise FileNotFoundError(f"Config not found: {path}")
         return path
+
+    try:
+        layout = workspace_mod.ensure_workspace(
+            path=workspace_path,
+            create=False,
+        )
+    except WorkspaceError as exc:
+        raise FileNotFoundError(str(exc)) from exc
+
+    workspace_candidate = layout.path_for("config") / CONFIG_FILENAME
+    if workspace_candidate.exists():
+        return workspace_candidate.resolve()
+
     cwd_cfg = Path.cwd() / CONFIG_FILENAME
     if cwd_cfg.exists():
         return cwd_cfg.resolve()
-    bundled = Path(__file__).resolve().parent / CONFIG_FILENAME
-    if bundled.exists():
-        return bundled
+
     raise FileNotFoundError(
-        "documents.toml not found (checked CWD and study_utils/)"
+        "documents.toml not found. Run `study generate-document config init`."
     )
 
 

@@ -6,6 +6,21 @@ from types import SimpleNamespace
 import pytest
 
 import study_utils.generate_document as gd
+from study_utils.core import workspace as workspace_mod
+from study_utils.generate_document import config as gd_config
+
+
+def _write_workspace_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    content: str = "[keywords]\nprompt='Use me'\n",
+) -> Path:
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setenv(workspace_mod.WORKSPACE_ENV, str(workspace_root))
+    layout = workspace_mod.ensure_workspace(path=workspace_root)
+    config_path = layout.path_for("config") / gd_config.CONFIG_FILENAME
+    config_path.write_text(content, encoding="utf-8")
+    return config_path
 
 
 def test_find_config_path_with_custom_missing(tmp_path: Path) -> None:
@@ -19,6 +34,42 @@ def test_find_config_path_with_explicit_existing(tmp_path: Path) -> None:
     cfg.write_text("[doc]\nprompt='Use'\n", encoding="utf-8")
     result = gd.find_config_path(str(cfg))
     assert result == cfg.resolve()
+
+
+def test_find_config_path_prefers_workspace_over_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace_cfg = _write_workspace_config(tmp_path, monkeypatch)
+
+    project = tmp_path / "project"
+    project.mkdir()
+    local_cfg = project / gd_config.CONFIG_FILENAME
+    local_cfg.write_text("[keywords]\nprompt='Local'\n", encoding="utf-8")
+
+    monkeypatch.chdir(project)
+
+    result = gd.find_config_path(None)
+    assert result == workspace_cfg.resolve()
+
+
+def test_find_config_path_uses_cwd_when_workspace_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setenv(
+        workspace_mod.WORKSPACE_ENV,
+        str(workspace_root),
+    )
+    workspace_mod.ensure_workspace(path=workspace_root)
+
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    local_cfg = project / gd_config.CONFIG_FILENAME
+    local_cfg.write_text("[keywords]\nprompt='Local'\n", encoding="utf-8")
+
+    result = gd.find_config_path(None)
+    assert result == local_cfg.resolve()
 
 
 def test_load_documents_config_empty_file(tmp_path: Path) -> None:
@@ -63,20 +114,22 @@ def test_find_config_path_prefers_cwd(
     monkeypatch.chdir(tmp_path)
     assert gd.find_config_path(None) == cfg.resolve()
 
-
 def test_find_config_path_raises_when_no_candidates(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls = []
+    workspace_root = tmp_path / "workspace"
+    monkeypatch.setenv(
+        workspace_mod.WORKSPACE_ENV,
+        str(workspace_root),
+    )
+    workspace_mod.ensure_workspace(path=workspace_root)
+    monkeypatch.chdir(tmp_path)
 
-    def fake_exists(self: Path) -> bool:
-        calls.append(self)
-        return False
-
-    monkeypatch.setattr(Path, "exists", fake_exists)
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError) as exc:
         gd.find_config_path(None)
-    assert calls  # ensure our stub ran
+
+    message = str(exc.value)
+    assert "config init" in message
 
 
 def test_load_documents_config_filters_invalid_entries(tmp_path: Path) -> None:
@@ -109,6 +162,8 @@ def test_generate_document_writes_output_with_stubbed_client(
     a.write_text("Alpha content", encoding="utf-8")
     b.write_text("Beta content", encoding="utf-8")
 
+    config_path = _write_workspace_config(tmp_path, monkeypatch)
+
     # Prepare stub response
     openai_factory.reset()
     stub = openai_factory()
@@ -125,7 +180,7 @@ def test_generate_document_writes_output_with_stubbed_client(
         inputs=[tmp_path],
         extensions={"txt", "md"},
         level_limit=0,
-        config_path=gd.find_config_path(None),
+        config_path=config_path,
     )
     assert used == 2
     assert out.read_text(encoding="utf-8").startswith("# Result")
@@ -137,6 +192,7 @@ def test_generate_document_unknown_type_raises(
 ) -> None:
     p = tmp_path / "x.txt"
     p.write_text("X", encoding="utf-8")
+    config_path = _write_workspace_config(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "study_utils.generate_document.runner.load_client",
         lambda: object(),
@@ -149,7 +205,7 @@ def test_generate_document_unknown_type_raises(
             inputs=[tmp_path],
             extensions={"txt"},
             level_limit=0,
-            config_path=gd.find_config_path(None),
+            config_path=config_path,
         )
 
 
@@ -157,6 +213,7 @@ def test_generate_document_no_matching_files_raises(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "a.bin").write_text("X", encoding="utf-8")
+    config_path = _write_workspace_config(tmp_path, monkeypatch)
     monkeypatch.setattr(
         "study_utils.generate_document.runner.load_client",
         lambda: object(),
@@ -168,7 +225,7 @@ def test_generate_document_no_matching_files_raises(
             inputs=[tmp_path],
             extensions={"txt"},
             level_limit=0,
-            config_path=gd.find_config_path(None),
+            config_path=config_path,
         )
 
 
@@ -177,6 +234,7 @@ def test_generate_document_raises_when_ai_returns_empty(
 ) -> None:
     ref_file = tmp_path / "a.txt"
     ref_file.write_text("data", encoding="utf-8")
+    config_path = _write_workspace_config(tmp_path, monkeypatch)
 
     class EmptyClient:
         def __init__(self) -> None:
@@ -199,7 +257,7 @@ def test_generate_document_raises_when_ai_returns_empty(
             inputs=[tmp_path],
             extensions={"txt"},
             level_limit=0,
-            config_path=gd.find_config_path(None),
+            config_path=config_path,
         )
 
 
@@ -209,6 +267,7 @@ def test_main_success(
     openai_factory,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    _write_workspace_config(tmp_path, monkeypatch)
     src_dir = tmp_path / "src"
     src_dir.mkdir()
     ref = src_dir / "ref.txt"
@@ -237,6 +296,7 @@ def test_main_handles_errors(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    _write_workspace_config(tmp_path, monkeypatch)
     argv = [
         "keywords",
         str(tmp_path / "out.md"),
@@ -256,6 +316,7 @@ def test_main_handles_generation_failure(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    _write_workspace_config(tmp_path, monkeypatch)
     ref = tmp_path / "ref.txt"
     ref.write_text("ref", encoding="utf-8")
 

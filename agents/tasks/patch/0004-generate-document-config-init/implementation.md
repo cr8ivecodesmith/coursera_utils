@@ -43,7 +43,7 @@
   - [x] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
   - [x] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
   - [x] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
-  - [ ] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
+  - [x] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
   - [ ] Update packaging metadata so the new template ships with the wheel and eliminate the old `documents.toml` entry.
   - [ ] Run `uv run pytest` (or equivalent) to maintain 100% coverage once refactor is complete.
   - [ ] Run `uv run ruff check` to ensure lint parity after module moves.
@@ -97,3 +97,10 @@
 **Changes**
 - Refreshed README quickstart to mention the `study generate-document config init` scaffolding flow.
 - Documented workspace-first config resolution and the new CLI flags table for generate-document.
+
+### 2025-10-02 21:10
+**Summary** — Expanded generate-document test coverage and exercised targeted subset
+**Changes**
+- Added workspace-first resolver unit tests and config-init CLI coverage (success paths, overwrite protection, relative destinations, workspace errors).
+- Updated CLI dispatch test expectations to assert workspace precedence and refactored helpers for writing temporary configs.
+- Ran `uv run pytest tests/test_generate_document.py::test_find_config_path_prefers_workspace_over_cwd`; test passes but run fails overall because the global 100% coverage gate is deferred to the final checklist step.
