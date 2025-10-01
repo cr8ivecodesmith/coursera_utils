@@ -82,6 +82,13 @@ The converted Markdown files will land in
 
 **Reshape documents to study formats:**
 
+Scaffold the document prompts configuration (skip if `study init` already
+created it):
+
+```bash
+uv run study generate-document config init
+```
+
 Create a reading assignment and a keywords list from a converted Markdown file:
 
 ```bash
@@ -287,8 +294,11 @@ study convert-markdown config init --workspace ~/.study-utils-data
 **`study generate-document DOC_TYPE OUTPUT INPUTS... [options]`**
 - Generate a Markdown document from reference files using prompts defined in a
   TOML config.
-- Looks for `documents.toml` in the current directory, then falls back to the
-  bundled defaults under `study_utils/documents.toml`.
+- Resolves `documents.toml` from the workspace config directory by default,
+  falling back to the current directory and finally the bundled template if no
+  workspace config exists.
+- Use `study generate-document config init` to scaffold the default template in
+  the workspace or a custom destination (`--path`, `--workspace`, `--force`).
 
 Example: 
 

@@ -42,7 +42,7 @@
   - [x] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
   - [x] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
   - [x] Update `study_utils.cli` dispatch, remove the old module file, and adjust any imports/tests that expect the previous shim.
-  - [ ] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
+  - [x] Refresh README quickstart and command documentation to highlight `study generate-document config init` and updated config resolution behavior.
   - [ ] Expand/adjust tests: unit tests for config resolution precedence and error messaging, CLI tests for the new command group (covering `--config`, `--workspace`, and `--force`), and cleanup of obsolete shim fixtures.
   - [ ] Update packaging metadata so the new template ships with the wheel and eliminate the old `documents.toml` entry.
   - [ ] Run `uv run pytest` (or equivalent) to maintain 100% coverage once refactor is complete.
@@ -91,3 +91,9 @@
 **Changes**
 - Pointed `study_utils.cli` at `study_utils.generate_document.cli` so the new config subcommand is reachable from `study generate-document`.
 - Ran the targeted CLI regression test; it passed but the repository-wide coverage gate still fails pending broader test updates.
+
+### 2025-10-02 19:05
+**Summary** — Updated documentation for generate-document config workflow
+**Changes**
+- Refreshed README quickstart to mention the `study generate-document config init` scaffolding flow.
+- Documented workspace-first config resolution and the new CLI flags table for generate-document.
