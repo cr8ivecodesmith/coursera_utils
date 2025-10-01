@@ -204,9 +204,6 @@ def _load_epub_partition():
 
 
 def _coerce_markdown_result(result: Any) -> str | None:
-    if isinstance(result, str):
-        return result
-
     markdown_value = getattr(result, "markdown", None)
     if isinstance(markdown_value, str):
         return markdown_value
@@ -215,6 +212,9 @@ def _coerce_markdown_result(result: Any) -> str | None:
         markdown_value = result.get("markdown")
         if isinstance(markdown_value, str):
             return markdown_value
+
+    if isinstance(result, str):
+        return result
 
     return None
 
