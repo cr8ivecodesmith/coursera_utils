@@ -42,11 +42,11 @@ Extend the AI-powered document generator so it mirrors the convert-markdown work
 - Revert: remove the new package modules, drop the template entry, restore the standalone `generate_document.py`, and excise command wiring changes.
 
 ## Definition of Done
-- [ ] Behavior verified
-- [ ] Docs updated (user/dev/ops)
-- [ ] Tests added/updated (unit/contract/integration/e2e)
-- [ ] Flags defaulted per channel (dev/beta/stable)
-- [ ] Monitoring in place
+- [x] Behavior verified
+- [x] Docs updated (user/dev/ops)
+- [x] Tests added/updated (unit/contract/integration/e2e)
+- [x] Flags defaulted per channel (dev/beta/stable)
+- [x] Monitoring in place
 
 ## Ownership
 - Owner: @matt

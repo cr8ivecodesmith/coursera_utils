@@ -294,9 +294,9 @@ study convert-markdown config init --workspace ~/.study-utils-data
 **`study generate-document DOC_TYPE OUTPUT INPUTS... [options]`**
 - Generate a Markdown document from reference files using prompts defined in a
   TOML config.
-- Resolves `documents.toml` from the workspace config directory by default,
-  falling back to the current directory and finally the bundled template if no
-  workspace config exists.
+- Resolves `documents.toml` from the workspace config directory by default and
+  falls back to the current directory. If no config is found, the CLI exits
+  with guidance to run `study generate-document config init`.
 - Use `study generate-document config init` to scaffold the default template in
   the workspace or a custom destination (`--path`, `--workspace`, `--force`).
 
