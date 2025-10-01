@@ -37,7 +37,7 @@
 - Architecture/pattern choices: follow convert-markdown’s package layout to keep CLI, config resolution, and execution seams isolated, aligning with the seam-first guidance in `patterns-and-architecture.md`; leverage `importlib.resources` for template access and shared workspace helpers for default paths, reusing the shared `config_templates` scaffolding helpers to avoid duplicating file-writing logic.
 - DI & boundaries: expose dependency seams for OpenAI client loading and filesystem interactions via injected callables (as today) so unit tests can stub them; keep CLI parsing separate from the generation runner per `engineering-guide.md` to simplify coverage and reuse.
 - Stepwise checklist:
-  - [ ] Introduce the `study_utils.generate_document` package structure, migrating core helpers into `config.py` and `runner.py` while keeping pure functions intact.
+- [x] Introduce the `study_utils.generate_document` package structure, migrating core helpers into `config.py` and `runner.py` while keeping pure functions intact.
   - [ ] Wire `cli.py` to provide both the document generation command and a nested `config init` subcommand mirroring convert-markdown options, keeping existing flags intact.
   - [ ] Register the bundled `template.toml` in `core.config_templates` and move existing TOML content into the new resource via the shared scaffolding helper.
   - [ ] Ensure `generate_document/__init__.py` re-exports the consumer-facing API the legacy module provided so imports stay stable without the shim.
@@ -61,3 +61,9 @@
 **Summary** — Initial implementation plan for generate-document config init refactor
 **Changes**
 - Captured understanding, solution outline, test coverage, and operational considerations for packaging generate-document with a config-init workflow.
+
+### 2025-10-01 20:07
+**Summary** — Established generate-document package scaffolding and API re-exports
+**Changes**
+- Created `study_utils/generate_document` package (`cli.py`, `config.py`, `runner.py`, `__init__.py`) mirroring the legacy module helpers and public surface.
+- Relocated `documents.toml` alongside the new package and updated tests/imports to target the package modules.

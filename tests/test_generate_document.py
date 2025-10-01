@@ -113,7 +113,10 @@ def test_generate_document_writes_output_with_stubbed_client(
     openai_factory.reset()
     stub = openai_factory()
     stub.queue_response("# Result\n\nGenerated.")
-    monkeypatch.setattr(gd, "load_client", lambda: stub)
+    monkeypatch.setattr(
+        "study_utils.generate_document.runner.load_client",
+        lambda: stub,
+    )
 
     out = tmp_path / "out.md"
     used = gd.generate_document(
@@ -134,7 +137,10 @@ def test_generate_document_unknown_type_raises(
 ) -> None:
     p = tmp_path / "x.txt"
     p.write_text("X", encoding="utf-8")
-    monkeypatch.setattr(gd, "load_client", lambda: object())
+    monkeypatch.setattr(
+        "study_utils.generate_document.runner.load_client",
+        lambda: object(),
+    )
 
     with pytest.raises(ValueError):
         gd.generate_document(
@@ -151,7 +157,10 @@ def test_generate_document_no_matching_files_raises(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "a.bin").write_text("X", encoding="utf-8")
-    monkeypatch.setattr(gd, "load_client", lambda: object())
+    monkeypatch.setattr(
+        "study_utils.generate_document.runner.load_client",
+        lambda: object(),
+    )
     with pytest.raises(FileNotFoundError):
         gd.generate_document(
             doc_type="keywords",
@@ -179,7 +188,10 @@ def test_generate_document_raises_when_ai_returns_empty(
                 )
             )
 
-    monkeypatch.setattr(gd, "load_client", EmptyClient)
+    monkeypatch.setattr(
+        "study_utils.generate_document.runner.load_client",
+        EmptyClient,
+    )
     with pytest.raises(RuntimeError):
         gd.generate_document(
             doc_type="keywords",
@@ -204,7 +216,10 @@ def test_main_success(
 
     stub = openai_factory()
     stub.queue_response("# Title\n\nBody")
-    monkeypatch.setattr(gd, "load_client", lambda: stub)
+    monkeypatch.setattr(
+        "study_utils.generate_document.runner.load_client",
+        lambda: stub,
+    )
     out_path = tmp_path / "out.md"
     argv = [
         "keywords",

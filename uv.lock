@@ -1520,6 +1520,15 @@ crypto = [
 ]
 
 [[package]]
+name = "pypandoc"
+version = "1.15"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/88/26e650d053df5f3874aa3c05901a14166ce3271f58bfe114fd776987efbd/pypandoc-1.15.tar.gz", hash = "sha256:ea25beebe712ae41d63f7410c08741a3cab0e420f6703f95bc9b3a749192ce13", size = 32940, upload-time = "2025-01-08T17:39:58.705Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/06/0763e0ccc81754d3eadb21b2cb86cf21bdedc9b52698c2ad6785db7f0a4e/pypandoc-1.15-py3-none-any.whl", hash = "sha256:4ededcc76c8770f27aaca6dff47724578428eca84212a31479403a9731fc2b16", size = 21321, upload-time = "2025-01-08T17:39:09.928Z" },
+]
+
+[[package]]
 name = "pypdf"
 version = "6.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1959,6 +1968,7 @@ dependencies = [
     { name = "openai" },
     { name = "pydub" },
     { name = "pygments" },
+    { name = "pypandoc" },
     { name = "python-dotenv" },
     { name = "rich" },
     { name = "speechrecognition" },
@@ -1998,6 +2008,7 @@ requires-dist = [
     { name = "openai" },
     { name = "pydub" },
     { name = "pygments" },
+    { name = "pypandoc" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-xdist", marker = "extra == 'dev'" },

@@ -242,8 +242,6 @@ def test_cli_generate_document_invokes_subcommand_defaults(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    import study_utils.generate_document as gd
-
     config = tmp_path / "documents.toml"
     config.write_text("[keywords]\nprompt='Use me'\n", encoding="utf-8")
     src_dir = tmp_path / "refs"
@@ -258,7 +256,10 @@ def test_cli_generate_document_invokes_subcommand_defaults(
         captured.update(kwargs)
         return 2
 
-    monkeypatch.setattr(gd, "generate_document", fake_generate_document)
+    monkeypatch.setattr(
+        "study_utils.generate_document.cli.generate_document",
+        fake_generate_document,
+    )
     monkeypatch.chdir(tmp_path)
 
     code = cli.main(
