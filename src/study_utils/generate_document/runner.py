@@ -89,6 +89,7 @@ def generate_document(
     }
 
     if "gpt-5" in model:
+        params["temperature"] = 1.0
         params["max_completion_tokens"] = 8192
     else:
         params["max_tokens"] = 4096
