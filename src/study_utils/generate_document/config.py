@@ -37,6 +37,13 @@ def find_config_path(
             raise FileNotFoundError(f"Config not found: {path}")
         return path
 
+    cwd_cfg = Path.cwd() / CONFIG_FILENAME
+    env_override = os.environ.get(workspace_mod.WORKSPACE_ENV, "")
+    workspace_override = bool(workspace_path) or bool(env_override.strip())
+
+    if not workspace_override and cwd_cfg.exists():
+        return cwd_cfg.resolve()
+
     try:
         layout = workspace_mod.ensure_workspace(
             path=workspace_path,
@@ -49,7 +56,6 @@ def find_config_path(
     if workspace_candidate.exists():
         return workspace_candidate.resolve()
 
-    cwd_cfg = Path.cwd() / CONFIG_FILENAME
     if cwd_cfg.exists():
         return cwd_cfg.resolve()
 

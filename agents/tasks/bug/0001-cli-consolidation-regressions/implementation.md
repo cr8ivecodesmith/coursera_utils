@@ -39,3 +39,8 @@
 - Removed legacy import fallbacks across generate-document, markdown-to-pdf, and quizzer utilities so subcommands share the core helpers.
 - Trimmed redundant tests tied to standalone scripts while adding CLI-level smoke coverage in `tests/test_cli.py` for generate-document, text-combiner, and markdown-to-pdf.
 - Ran `pytest` (100% coverage) and `ruff check` to confirm the cleanup passes existing quality gates.
+
+### 2025-10-11 12:05
+**Summary**
+- Updated `find_config_path` to favor project-local configs when no workspace override is set, while keeping explicit workspace overrides as the primary source.
+- Re-ran `pytest` (full suite, 100% coverage) and `ruff check` to validate the fix and lint cleanliness.

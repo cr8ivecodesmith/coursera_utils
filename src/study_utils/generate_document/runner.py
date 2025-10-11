@@ -88,6 +88,7 @@ def generate_document(
         messages=messages,
         temperature=0.2,
         max_tokens=4096,
+        max_completion_tokens=4096,
     )
     content = (resp.choices[0].message.content or "").strip()
     if not content:
