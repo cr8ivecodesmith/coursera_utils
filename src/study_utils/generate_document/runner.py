@@ -82,14 +82,18 @@ def generate_document(
         "OPENAI_TITLE_MODEL",
         "gpt-4o-mini",
     )
+    params = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.2,
+    }
 
-    resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.2,
-        max_tokens=4096,
-        max_completion_tokens=4096,
-    )
+    if "gpt-5" in model:
+        params["max_completion_tokens"] = 8192
+    else:
+        params["max_tokens"] = 4096
+
+    resp = client.chat.completions.create(**params)
     content = (resp.choices[0].message.content or "").strip()
     if not content:
         raise RuntimeError(
